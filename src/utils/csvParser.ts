@@ -32,14 +32,25 @@ export const parseRowingCsv = (csvText: string): DatasetCsv => {
   const normalized = csvText.replace(/\r\n/g, '\n').trim();
   const lines = normalized.split('\n');
 
-  if (lines.length < 2) {
+  if (lines.length === 0 || (lines.length === 1 && lines[0] === '')) {
     throw new Error('CSVの行数が不足しています');
   }
 
-  const measurementMode = parseMeasurementMode(lines[0]);
-  const csvRows = lines.slice(1).map((line) => line.split(','));
+  const firstLine = lines[0] || '';
+  const firstCell = firstLine.split(',')[0] || '';
+  const hasMeasurementMode = firstCell.trim().startsWith(MEASUREMENT_PREFIX);
+
+  let measurementMode = 'unknown';
+  let dataLinesStartAtIndex = 0;
+
+  if (hasMeasurementMode) {
+    measurementMode = parseMeasurementMode(firstLine);
+    dataLinesStartAtIndex = 1;
+  }
+
+  const csvRows = lines.slice(dataLinesStartAtIndex).map((line) => line.split(','));
   const [headerRow, ...dataRows] = csvRows;
-  if (!headerRow || headerRow.length === 0) {
+  if (!headerRow || headerRow.length === 0 || (headerRow.length === 1 && headerRow[0].trim() === '')) {
     throw new Error('CSVヘッダー行が不正です');
   }
 

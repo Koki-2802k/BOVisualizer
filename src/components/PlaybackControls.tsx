@@ -32,12 +32,14 @@ type PlaybackControlsProps = {
   maxFrame: number;
   graphMode?: GraphMode;
   currentFrame?: RowingFrame | null;
+  directoryHandle?: FileSystemDirectoryHandle | null;
   onDatasetChange: (datasetId: string) => void;
   onPlayToggle: () => void;
   onSeekChange: (frame: number) => void;
   onFpsChange: (fps: number) => void;
   onGraphModeChange?: (graphMode: GraphMode) => void;
   onCustomDatasetsLoaded?: (items: Array<{ id: string; label: string; data: DatasetCsv }>) => void;
+  onDirectoryHandleChange?: (handle: FileSystemDirectoryHandle | null) => void;
 };
 
 export default function PlaybackControls({
@@ -49,12 +51,14 @@ export default function PlaybackControls({
   maxFrame,
   graphMode = 'acceleration',
   currentFrame = null,
+  directoryHandle = null,
   onDatasetChange,
   onPlayToggle,
   onSeekChange,
   onFpsChange,
   onGraphModeChange,
   onCustomDatasetsLoaded,
+  onDirectoryHandleChange,
 }: PlaybackControlsProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -66,6 +70,83 @@ export default function PlaybackControls({
   const handleGraphModeChange = (nextMode: GraphMode) => {
     if (onGraphModeChange) {
       onGraphModeChange(nextMode);
+    }
+  };
+
+  const loadFromDirectoryHandle = async (handle: FileSystemDirectoryHandle) => {
+    try {
+      const loadedDatasets: Array<{ id: string; label: string; data: DatasetCsv }> = [];
+
+      for await (const entry of (handle as any).values()) {
+        if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.csv')) {
+          const file = await entry.getFile();
+          const text = await file.text();
+          const parsed = parseRowingCsv(text);
+          const customId = `local-${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+          const label = `📂 ${file.name}`;
+          loadedDatasets.push({ id: customId, label, data: parsed });
+        }
+      }
+
+      if (loadedDatasets.length === 0) {
+        alert('選択されたフォルダにCSVファイルが見つかりませんでした。');
+        return;
+      }
+
+      const hasSampleCsv = loadedDatasets.some(
+        (item) => item.label.toLowerCase().includes('sample_')
+      );
+      if (!hasSampleCsv) {
+        alert('【注意】選択されたフォルダ内に "sample_*.csv" のパターンに合致するファイルが見つかりませんでした。');
+      }
+
+      if (onCustomDatasetsLoaded) {
+        onCustomDatasetsLoaded(loadedDatasets);
+      }
+    } catch (err) {
+      console.error('Failed to load from directory handle:', err);
+      alert(`フォルダの読み込みに失敗しました:\n${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const handleSelectFolderClick = async () => {
+    if ('showDirectoryPicker' in window) {
+      try {
+        const handle = await (window as any).showDirectoryPicker();
+        if (onDirectoryHandleChange) {
+          onDirectoryHandleChange(handle);
+        }
+        await loadFromDirectoryHandle(handle);
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
+        console.error('Directory picker failed, falling back to input:', err);
+        fileInputRef.current?.click();
+      }
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleReloadClick = async () => {
+    if (directoryHandle) {
+      try {
+        const options = { mode: 'read' as const };
+        if (await (directoryHandle as any).queryPermission(options) !== 'granted') {
+          if (await (directoryHandle as any).requestPermission(options) !== 'granted') {
+            alert('フォルダの読み取り権限が拒否されたため、再読み込みできませんでした。');
+            return;
+          }
+        }
+        await loadFromDirectoryHandle(directoryHandle);
+      } catch (err) {
+        console.error('Reload directory failed:', err);
+        alert(`再読み込みに失敗しました:\n${err instanceof Error ? err.message : String(err)}`);
+      }
+    } else {
+      alert('自動再読み込みがサポートされていないか、フォルダがまだ選択されていません。再度フォルダを選択してください。');
+      fileInputRef.current?.click();
     }
   };
 
@@ -147,7 +228,7 @@ export default function PlaybackControls({
           multiple: true,
         } as any)}
       />
-      <button type="button" onClick={() => fileInputRef.current?.click()} title="CSVファイルの入ったフォルダを選択">
+      <button type="button" onClick={handleSelectFolderClick} title="CSVファイルの入ったフォルダを選択">
         フォルダ選択
       </button>
 
@@ -228,6 +309,15 @@ export default function PlaybackControls({
         <span className="metric-item oar-angle"><span className="label">左オール</span><strong>{metricText(leftAngle, '°')}</strong></span>
         <span className="metric-item oar-angle"><span className="label">右オール</span><strong>{metricText(rightAngle, '°')}</strong></span>
       </div>
+
+      <button
+        type="button"
+        onClick={handleReloadClick}
+        className="reload-btn"
+        title="フォルダ内を再読み込み"
+      >
+        <img src="/RELOAD.png" alt="再読み込み" />
+      </button>
     </section>
   );
 }

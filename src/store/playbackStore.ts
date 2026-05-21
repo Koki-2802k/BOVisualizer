@@ -11,6 +11,7 @@ type PlaybackState = {
   seekFrame: number;
   maxFrame: number;
   graphMode: GraphMode;
+  directoryHandle: FileSystemDirectoryHandle | null;
   setDatasets: (datasets: DatasetManifestItem[]) => void;
   setSelectedDatasetId: (datasetId: string) => void;
   setIsPlaying: (isPlaying: boolean) => void;
@@ -20,6 +21,7 @@ type PlaybackState = {
   setGraphMode: (graphMode: GraphMode) => void;
   addCustomDataset: (id: string, label: string, data: DatasetCsv) => void;
   setCustomDatasets: (items: Array<{ id: string; label: string; data: DatasetCsv }>) => void;
+  setDirectoryHandle: (handle: FileSystemDirectoryHandle | null) => void;
 };
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
@@ -33,6 +35,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
   seekFrame: 0,
   maxFrame: 0,
   graphMode: 'acceleration',
+  directoryHandle: null,
   setDatasets: (datasets) => {
     const nextSelected = get().selectedDatasetId || datasets[0]?.id || '';
     set({
@@ -96,4 +99,5 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
       isPlaying: false,
     });
   },
+  setDirectoryHandle: (directoryHandle) => set({ directoryHandle }),
 }));

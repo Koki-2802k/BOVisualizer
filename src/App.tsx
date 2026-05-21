@@ -22,6 +22,7 @@ function App() {
     seekFrame,
     maxFrame,
     graphMode,
+    directoryHandle,
     setDatasets,
     setSelectedDatasetId,
     setIsPlaying,
@@ -30,6 +31,7 @@ function App() {
     setMaxFrame,
     setGraphMode,
     setCustomDatasets,
+    setDirectoryHandle,
   } = usePlaybackStore();
 
   const datasetState = useDataset(selectedDatasetId);
@@ -133,12 +135,14 @@ function App() {
         maxFrame={maxFrame}
         graphMode={graphMode}
         currentFrame={currentFrame}
+        directoryHandle={directoryHandle}
         onDatasetChange={setSelectedDatasetId}
         onPlayToggle={() => setIsPlaying(!isPlaying)}
         onSeekChange={setSeekFrame}
         onFpsChange={setFps}
         onGraphModeChange={setGraphMode}
         onCustomDatasetsLoaded={setCustomDatasets}
+        onDirectoryHandleChange={setDirectoryHandle}
       />
       <div className="dashboard-area">
         {error ? (
