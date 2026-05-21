@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import type { DatasetCsv, DatasetManifestItem, RowingFrame } from '../types/rowing';
 import type { GraphMode } from './TimeSeriesChart';
 import { parseRowingCsv } from '../utils/csvParser';
@@ -33,6 +33,8 @@ type PlaybackControlsProps = {
   graphMode?: GraphMode;
   currentFrame?: RowingFrame | null;
   directoryHandle?: FileSystemDirectoryHandle | null;
+  autoReloadEnabled?: boolean;
+  autoReloadInterval?: number;
   onDatasetChange: (datasetId: string) => void;
   onPlayToggle: () => void;
   onSeekChange: (frame: number) => void;
@@ -40,6 +42,8 @@ type PlaybackControlsProps = {
   onGraphModeChange?: (graphMode: GraphMode) => void;
   onCustomDatasetsLoaded?: (items: Array<{ id: string; label: string; data: DatasetCsv }>) => void;
   onDirectoryHandleChange?: (handle: FileSystemDirectoryHandle | null) => void;
+  onAutoReloadEnabledChange?: (enabled: boolean) => void;
+  onAutoReloadIntervalChange?: (interval: number) => void;
 };
 
 export default function PlaybackControls({
@@ -52,6 +56,8 @@ export default function PlaybackControls({
   graphMode = 'acceleration',
   currentFrame = null,
   directoryHandle = null,
+  autoReloadEnabled = false,
+  autoReloadInterval = 30,
   onDatasetChange,
   onPlayToggle,
   onSeekChange,
@@ -59,6 +65,8 @@ export default function PlaybackControls({
   onGraphModeChange,
   onCustomDatasetsLoaded,
   onDirectoryHandleChange,
+  onAutoReloadEnabledChange,
+  onAutoReloadIntervalChange,
 }: PlaybackControlsProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -79,17 +87,24 @@ export default function PlaybackControls({
 
       for await (const entry of (handle as any).values()) {
         if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.csv')) {
-          const file = await entry.getFile();
-          const text = await file.text();
-          const parsed = parseRowingCsv(text);
-          const customId = `local-${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-          const label = `📂 ${file.name}`;
-          loadedDatasets.push({ id: customId, label, data: parsed });
+          try {
+            const file = await entry.getFile();
+            const text = await file.text();
+            const parsed = parseRowingCsv(text);
+            const customId = `local-${file.name}`;
+            const label = `📂 ${file.name}`;
+            loadedDatasets.push({ id: customId, label, data: parsed });
+          } catch (fileErr) {
+            console.warn(`Failed to read file "${entry.name}", skipping:`, fileErr);
+          }
         }
       }
 
       if (loadedDatasets.length === 0) {
         alert('選択されたフォルダにCSVファイルが見つかりませんでした。');
+        if (onCustomDatasetsLoaded) {
+          onCustomDatasetsLoaded([]);
+        }
         return;
       }
 
@@ -140,6 +155,7 @@ export default function PlaybackControls({
           }
         }
         await loadFromDirectoryHandle(directoryHandle);
+        triggerSpin();
       } catch (err) {
         console.error('Reload directory failed:', err);
         alert(`再読み込みに失敗しました:\n${err instanceof Error ? err.message : String(err)}`);
@@ -162,6 +178,9 @@ export default function PlaybackControls({
 
     if (csvFiles.length === 0) {
       alert('選択されたフォルダにCSVファイルが見つかりませんでした。');
+      if (onCustomDatasetsLoaded) {
+        onCustomDatasetsLoaded([]);
+      }
       return;
     }
 
@@ -184,7 +203,7 @@ export default function PlaybackControls({
         });
 
         const parsed = parseRowingCsv(text);
-        const customId = `local-${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        const customId = `local-${file.name}`;
         const label = `📂 ${file.name}`;
 
         loadedDatasets.push({ id: customId, label, data: parsed });
@@ -201,10 +220,97 @@ export default function PlaybackControls({
     event.target.value = '';
   };
 
+  const [showOptions, setShowOptions] = useState(false);
+  const [isSpinning, setIsSpinning] = useState(false);
+
+  const triggerSpin = () => {
+    setIsSpinning(true);
+    setTimeout(() => {
+      setIsSpinning(false);
+    }, 600);
+  };
+
+  // Background Auto-Reload Effect
+  useEffect(() => {
+    if (!autoReloadEnabled || !directoryHandle) {
+      return;
+    }
+
+    const runAutoReload = async () => {
+      try {
+        const options = { mode: 'read' as const };
+        if (await (directoryHandle as any).queryPermission(options) === 'granted') {
+          await loadFromDirectoryHandle(directoryHandle);
+          triggerSpin();
+        }
+      } catch (err) {
+        console.warn('Background auto reload failed:', err);
+      }
+    };
+
+    const timerId = setInterval(() => {
+      void runAutoReload();
+    }, autoReloadInterval * 1000);
+
+    return () => {
+      clearInterval(timerId);
+    };
+  }, [autoReloadEnabled, autoReloadInterval, directoryHandle]);
+
+  // Click outside listener for options popover
+  useEffect(() => {
+    if (!showOptions) return;
+    const handleDocumentClick = () => {
+      setShowOptions(false);
+    };
+    document.addEventListener('click', handleDocumentClick);
+    return () => {
+      document.removeEventListener('click', handleDocumentClick);
+    };
+  }, [showOptions]);
+
   return (
     <section className="panel controls" aria-label="再生操作">
-      <div className="logo-container">
+      <div 
+        className="logo-container"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowOptions((prev) => !prev);
+        }}
+        title="設定オプションを表示"
+      >
         <img src="/BOV_logo.png" alt="BOV logo" className="app-logo" />
+        {showOptions && (
+          <div className="options-popover" onClick={(e) => e.stopPropagation()}>
+            <h4 style={{ margin: '0 0 12px 0', fontSize: '35px', color: '#f8fafc', borderBottom: '1px solid rgba(255, 255, 255, 0.15)', paddingBottom: '8px', textAlign: 'left', fontWeight: 600 }}>設定オプション</h4>
+            
+            <label className="option-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', cursor: 'pointer', color: '#e2e8f0', fontSize: '30px', margin: '8px 0 12px 0', minWidth: 'auto', fontWeight: 500 }}>
+              <input
+                type="checkbox"
+                checked={autoReloadEnabled}
+                onChange={(e) => onAutoReloadEnabledChange?.(e.target.checked)}
+                style={{ width: '30px', height: '30px', cursor: 'pointer', margin: 0 }}
+              />
+              <span style={{ userSelect: 'none' }}>自動再読み込みを有効化</span>
+            </label>
+            
+            <label className="option-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#e2e8f0', fontSize: '30px', textAlign: 'left', minWidth: 'auto', fontWeight: 500 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '16px' }}>
+                <span style={{ userSelect: 'none' }}>再読み込み間隔:</span>
+                <span style={{ fontWeight: 'bold', color: '#38bdf8' }}>{autoReloadInterval}秒</span>
+              </div>
+              <input
+                type="range"
+                min={2}
+                max={60}
+                value={autoReloadInterval}
+                onChange={(e) => onAutoReloadIntervalChange?.(Number(e.target.value))}
+                disabled={!autoReloadEnabled}
+                style={{ width: '100%', cursor: autoReloadEnabled ? 'pointer' : 'not-allowed', opacity: autoReloadEnabled ? 1 : 0.5, margin: '6px 0 0 0', height: '30px' }}
+              />
+            </label>
+          </div>
+        )}
       </div>
       <label>
         データセット
@@ -316,7 +422,7 @@ export default function PlaybackControls({
         className="reload-btn"
         title="フォルダ内を再読み込み"
       >
-        <img src="/RELOAD.png" alt="再読み込み" />
+        <img src="/RELOAD.png" alt="再読み込み" className={isSpinning ? 'spinning' : ''} />
       </button>
     </section>
   );

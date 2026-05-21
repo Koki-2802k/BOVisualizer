@@ -12,6 +12,8 @@ type PlaybackState = {
   maxFrame: number;
   graphMode: GraphMode;
   directoryHandle: FileSystemDirectoryHandle | null;
+  autoReloadEnabled: boolean;
+  autoReloadInterval: number;
   setDatasets: (datasets: DatasetManifestItem[]) => void;
   setSelectedDatasetId: (datasetId: string) => void;
   setIsPlaying: (isPlaying: boolean) => void;
@@ -22,9 +24,21 @@ type PlaybackState = {
   addCustomDataset: (id: string, label: string, data: DatasetCsv) => void;
   setCustomDatasets: (items: Array<{ id: string; label: string; data: DatasetCsv }>) => void;
   setDirectoryHandle: (handle: FileSystemDirectoryHandle | null) => void;
+  setAutoReloadEnabled: (enabled: boolean) => void;
+  setAutoReloadInterval: (interval: number) => void;
 };
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
+const sortDatasets = (datasets: DatasetManifestItem[]): DatasetManifestItem[] => {
+  return [...datasets].sort((a, b) => {
+    const cmp = a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' });
+    if (cmp !== 0) {
+      return cmp;
+    }
+    return a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' });
+  });
+};
 
 export const usePlaybackStore = create<PlaybackState>((set, get) => ({
   datasets: [],
@@ -37,12 +51,13 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
   graphMode: 'acceleration',
   directoryHandle: null,
   setDatasets: (datasets) => {
-    const nextSelected = get().selectedDatasetId || datasets[0]?.id || '';
+    const sorted = sortDatasets(datasets);
+    const nextSelected = get().selectedDatasetId || sorted[0]?.id || '';
     set({
-      datasets,
-      selectedDatasetId: datasets.some((dataset) => dataset.id === nextSelected)
+      datasets: sorted,
+      selectedDatasetId: sorted.some((dataset) => dataset.id === nextSelected)
         ? nextSelected
-        : datasets[0]?.id || '',
+        : sorted[0]?.id || '',
     });
   },
   setSelectedDatasetId: (selectedDatasetId) => set({ selectedDatasetId, seekFrame: 0, isPlaying: false }),
@@ -66,7 +81,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
     const currentDatasets = get().datasets;
     const nextDatasets = currentDatasets.some((item) => item.id === id)
       ? currentDatasets
-      : [...currentDatasets, newItem];
+      : sortDatasets([...currentDatasets, newItem]);
 
     set((state) => ({
       datasets: nextDatasets,
@@ -85,19 +100,27 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
       label: item.label,
       path: `custom://${item.id}`,
     }));
+    const sorted = sortDatasets(nextManifestItems);
     
     const nextCustomDatasets: Record<string, DatasetCsv> = {};
     items.forEach((item) => {
       nextCustomDatasets[item.id] = item.data;
     });
 
+    const prevSelected = get().selectedDatasetId;
+    const hasPrev = sorted.some((d) => d.id === prevSelected);
+
     set({
-      datasets: nextManifestItems,
+      datasets: sorted,
       customDatasets: nextCustomDatasets,
-      selectedDatasetId: items[0]?.id || '',
-      seekFrame: 0,
-      isPlaying: false,
+      selectedDatasetId: hasPrev ? prevSelected : (sorted[0]?.id || ''),
+      seekFrame: hasPrev ? get().seekFrame : 0,
+      isPlaying: hasPrev ? get().isPlaying : false,
     });
   },
   setDirectoryHandle: (directoryHandle) => set({ directoryHandle }),
+  autoReloadEnabled: false,
+  autoReloadInterval: 30,
+  setAutoReloadEnabled: (autoReloadEnabled) => set({ autoReloadEnabled }),
+  setAutoReloadInterval: (autoReloadInterval) => set({ autoReloadInterval: clamp(autoReloadInterval, 2, 60) }),
 }));

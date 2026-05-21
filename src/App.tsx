@@ -23,6 +23,8 @@ function App() {
     maxFrame,
     graphMode,
     directoryHandle,
+    autoReloadEnabled,
+    autoReloadInterval,
     setDatasets,
     setSelectedDatasetId,
     setIsPlaying,
@@ -32,6 +34,8 @@ function App() {
     setGraphMode,
     setCustomDatasets,
     setDirectoryHandle,
+    setAutoReloadEnabled,
+    setAutoReloadInterval,
   } = usePlaybackStore();
 
   const datasetState = useDataset(selectedDatasetId);
@@ -121,7 +125,9 @@ function App() {
     [activeDataset],
   );
 
-  const error = !isCustom ? datasetState.error : null;
+  const error = !isCustom
+    ? datasetState.error
+    : (datasets.length === 0 ? '表示できるデータセットがありません。フォルダを選択するか、ファイルを確認してください。' : null);
   const loading = !isCustom ? datasetState.loading : false;
 
   return (
@@ -136,6 +142,8 @@ function App() {
         graphMode={graphMode}
         currentFrame={currentFrame}
         directoryHandle={directoryHandle}
+        autoReloadEnabled={autoReloadEnabled}
+        autoReloadInterval={autoReloadInterval}
         onDatasetChange={setSelectedDatasetId}
         onPlayToggle={() => setIsPlaying(!isPlaying)}
         onSeekChange={setSeekFrame}
@@ -143,6 +151,8 @@ function App() {
         onGraphModeChange={setGraphMode}
         onCustomDatasetsLoaded={setCustomDatasets}
         onDirectoryHandleChange={setDirectoryHandle}
+        onAutoReloadEnabledChange={setAutoReloadEnabled}
+        onAutoReloadIntervalChange={setAutoReloadInterval}
       />
       <div className="dashboard-area">
         {error ? (
