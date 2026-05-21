@@ -1,0 +1,441 @@
+/* ----------------------------------------------------
+   アプリケーション全体の基本外殻（シェル）
+   ---------------------------------------------------- */
+.app-shell {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 6px;
+  padding: 6px;
+  /* 背景：トップ左からボトム右へ流れるような淡いグラデーションカラー */
+  background:
+    radial-gradient(circle at top left, rgba(30, 41, 59, 0.08), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.08), transparent 28%),
+    linear-gradient(180deg, #eef4fb 0%, #f8fafc 100%);
+  color: #0f172a;
+  /* アプリ全体の基本文字色（濃いネイビーグレー） */
+  font-size: 13px;
+  /* アプリ全体の標準文字サイズ */
+  line-height: 1.35;
+  /* 行の高さ（行間） */
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+}
+
+/* ----------------------------------------------------
+   ダッシュボード描画エリア
+   ---------------------------------------------------- */
+.dashboard-area {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ----------------------------------------------------
+   エラーや読み込み状況を表示する最前面メッセージ枠
+   ---------------------------------------------------- */
+.overlay-message {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.94);
+  /* メッセージ枠の背景色（半透明の白） */
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  /* メッセージの文字サイズ */
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+/* ----------------------------------------------------
+   カード型パネル共通（3D、マップ、時系列、オール軌跡など）
+   ---------------------------------------------------- */
+.panel {
+  background: rgba(255, 255, 255, 0.95);
+  /* パネルの背景色（ほぼ不透明の白） */
+  border: 1px solid #d5deea;
+  /* パネル外枠の線の太さと色（薄い青灰色） */
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-height: 0;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+/* パネル内部の見出しタイトル（h3） */
+.panel h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  /* タイトル文字のサイズ */
+  line-height: 1.2;
+}
+
+/* ----------------------------------------------------
+   上部メトリクスバー（SPM等の表示コンテナ）
+   ---------------------------------------------------- */
+.toolbar-metrics {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f1f5f9;
+  /* メトリクスバーの背景色（ライトグレー） */
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  /* メトリクスバーの枠線の色 */
+}
+
+/* 各メトリクス項目（SPM、SPLIT、左オール、右オールなど） */
+/* ※ ユーザー指示により文字サイズを大きく（20px）変更した部分です */
+.metric-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 20px;
+  /* ボックス内の標準・単位文字サイズ */
+}
+
+/* 「SPM」「SPLIT」などの見出しラベル文字 */
+.metric-item .label {
+  font-weight: 700;
+  /* 文字の太さ（太字） */
+  letter-spacing: 0.02em;
+  /* 文字の間隔（少し広め） */
+  color: #334155;
+  /* ラベルの文字色（落ち着いたグレー） */
+}
+
+/* 「28.3」などの測定された数値データ文字 */
+.metric-item strong {
+  font-size: 20px;
+  /* 数値の文字サイズ */
+}
+
+/* 左右オールの角度表示ボックスを固定幅（-2桁：-XX.X° にフィットするサイズ）に設定 */
+.metric-item.oar-angle strong {
+  display: inline-block;
+  width: 60px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------------
+   操作パネルエリア（データセット選択、シークバー、FPS、開始ボタンなど）
+   ---------------------------------------------------- */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 6px 10px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  min-height: 48px;
+}
+
+/* 各コントロール用ラベル */
+.controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 16px;
+  /* 各ラベル文字のサイズ */
+  font-weight: 600;
+  /* 文字の太さ */
+  color: #334155;
+  /* ラベルの文字色 */
+}
+
+/* FPS用の横並びラベル設定 */
+/* ※ ユーザー指示により「FPS」文字を入力ボックスの左側に並べるために追加した部分です */
+.controls label.fps-label {
+  flex-direction: row;
+  /* 要素を縦積み（column）から横並び（row）に変更 */
+  align-items: center;
+  /* 垂直方向の中央配置に調整 */
+  gap: 8px;
+  /* 文字と入力ボックスの間のすき間 */
+}
+
+/* ドロップダウンメニュー（select）および数値入力ボックス（input） */
+.controls select,
+.controls input[type='number'] {
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid #94a3b8;
+  /* 入力部品の外枠の線の色（中間のグレー） */
+  border-radius: 6px;
+  background: #ffffff;
+  /* 入力部品の背景色（白） */
+  color: #0f172a;
+  /* 入力された文字や選択肢の文字色 */
+  font-size: 16px;
+  /* 入力部品内の文字サイズ */
+  font-family: inherit;
+}
+
+/* スライダー（シークバー） */
+.controls input[type='range'] {
+  width: min(320px, 24vw);
+  min-height: 30px;
+}
+
+/* ボタン共通（開始、フォルダ選択など） */
+.controls button {
+  min-height: 30px;
+  border: 1px solid #94a3b8;
+  /* ボタンの外枠の線の色 */
+  background: #ffffff;
+  /* ボタンの背景色（白） */
+  border-radius: 6px;
+  padding: 0 10px;
+  cursor: pointer;
+  font-size: 16px;
+  /* ボタン文字のサイズ */
+  font-weight: 600;
+  /* ボタン文字の太さ */
+  color: #0f172a;
+  /* ボタン文字の色 */
+}
+
+/* 再生フレーム数の表示用テキスト（例: "35 / 126"） */
+.frame-readout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  width: 110px;
+  flex-shrink: 0;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.04);
+  /* 表示枠の背景色（ごく薄いグレー） */
+  color: #0f172a;
+  /* 文字色 */
+  font-size: 16px;
+  /* 文字サイズ */
+  font-weight: 600;
+  /* 文字の太さ */
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------------
+   グラフ表示モード切り替え（加速度/ジャイロ/速度ボタン）
+   ---------------------------------------------------- */
+.graph-mode-group {
+  display: inline-flex;
+  border: 1px solid #94a3b8;
+  /* グループ全体の境界線の色 */
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.95);
+  /* 背景色 */
+}
+
+/* 切り替えボタン個別 */
+.graph-mode-group button {
+  flex: 1 0 auto;
+  width: auto;
+  min-width: 0;
+  height: 30px;
+  padding: 0 10px;
+  border: none;
+  border-left: 1px solid #94a3b8;
+  /* 隣り合うボタン同士を分ける線の色 */
+  background: rgba(255, 255, 255, 0.95);
+  /* ボタンの通常背景色 */
+  border-radius: 0;
+  cursor: pointer;
+  font-size: 16px;
+  /* ボタン文字のサイズ */
+  font-weight: 600;
+  /* ボタン文字の太さ */
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.graph-mode-group button:first-child {
+  border-left: none;
+}
+
+/* 選択されてアクティブになっている状態のボタン */
+.graph-mode-group .mode-active {
+  background: #0f172a;
+  /* アクティブなボタンの背景色（濃いネイビーグレー） */
+  color: #ffffff;
+  /* アクティブなボタンの文字色（白） */
+  border-color: #0f172a;
+}
+
+/* ----------------------------------------------------
+   ダッシュボード全体グリッドレイアウト
+   ---------------------------------------------------- */
+.dashboard-grid {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    'map oar'
+    'scene timeseries';
+}
+
+.scene-wrapper,
+.oar-wrapper,
+.map-wrapper,
+.timeseries-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.scene-wrapper {
+  grid-area: scene;
+}
+
+.oar-wrapper {
+  grid-area: oar;
+}
+
+.map-wrapper {
+  grid-area: map;
+}
+
+.timeseries-wrapper {
+  grid-area: timeseries;
+}
+
+/* マップの見出しタイトル */
+.map-wrapper>h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  /* タイトル文字のサイズ */
+  line-height: 1.2;
+}
+
+/* ----------------------------------------------------
+   レスポンシブデザイン（中解像度の画面対応 - 最大横幅1366px）
+   ---------------------------------------------------- */
+@media (max-width: 1366px) {
+  .app-shell {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .panel {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .controls {
+    gap: 10px 12px;
+    padding: 10px 12px;
+    min-height: 68px;
+  }
+
+  .controls input[type='range'] {
+    width: min(280px, 22vw);
+  }
+
+  .graph-mode-group button,
+  .controls button,
+  .controls select,
+  .controls input[type='number'],
+  .frame-readout {
+    min-height: 36px;
+  }
+}
+
+/* ----------------------------------------------------
+   レスポンシブデザイン（モバイル・タブレット等の縦長画面 - 最大横幅1100px）
+   ---------------------------------------------------- */
+@media (max-width: 1100px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+      'map'
+      'oar'
+      'scene'
+      'timeseries';
+  }
+}
+
+/* ----------------------------------------------------
+   レスポンシブデザイン（横幅1280px以下、または高さ720px以下の小型画面）
+   ---------------------------------------------------- */
+@media (max-width: 1280px),
+(max-height: 720px) {
+  .app-shell {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+/* ----------------------------------------------------
+   ロゴ表示コンテナとロゴ画像のスタイリング
+   ---------------------------------------------------- */
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 12px;
+  border-right: 1px solid #cbd5e1;
+  /* 隣のコントロール要素と分ける境界線 */
+  margin-right: 6px;
+  height: 36px;
+}
+
+.app-logo {
+  height: 70px;
+  /* コントロールバーの高さ 30px〜36px に合わせる */
+  width: auto;
+  object-fit: contain;
+  transition: transform 0.25s ease, filter 0.25s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
+}
+
+.app-logo:hover {
+  transform: scale(1.05);
+  /* マウスホバー時の微細なインタラクション */
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.12));
+}
+
+/* ----------------------------------------------------
+   地図（Leaflet）内のフォントサイズを一括で変更
+   ---------------------------------------------------- */
+.leaflet-container {
+  font-size: 16px !important;
+}
+
+/* ----------------------------------------------------
+   各ウィンドウ内の空データ・エラー表示共通スタイル
+   ---------------------------------------------------- */
+.panel-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 22px;
+  color: #64748b;
+  /* 落ち着いたグレー */
+  font-weight: 600;
+  padding: 16px;
+}
