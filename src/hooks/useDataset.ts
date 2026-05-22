@@ -22,7 +22,7 @@ export function useDataset(selectedDatasetId: string): DatasetState {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch('/data/manifest.json');
+        const response = await fetch(`${import.meta.env.BASE_URL}data/manifest.json`);
         if (!response.ok) {
           throw new Error(`manifest fetch failed: ${response.status}`);
         }
@@ -65,7 +65,8 @@ export function useDataset(selectedDatasetId: string): DatasetState {
         if (!target) {
           throw new Error('dataset not found');
         }
-        const response = await fetch(target.path);
+        const path = target.path.startsWith('/') ? target.path.slice(1) : target.path;
+        const response = await fetch(`${import.meta.env.BASE_URL}${path}`);
         if (!response.ok) {
           throw new Error(`dataset fetch failed: ${response.status}`);
         }

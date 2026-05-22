@@ -9,7 +9,8 @@
     "test": "vitest",
     "e2e:cdp": "node scripts/cdp-e2e.mjs",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npx gh-pages -d dist"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

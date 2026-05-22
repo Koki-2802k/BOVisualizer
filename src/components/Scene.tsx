@@ -30,10 +30,10 @@ const BOAT_FIXED_ROTATION = new Euler(0, 0, -Math.PI / 180, "XYZ");
 const OAR_HEIGHT_OFFSET = -0.01; // オールのブレード先端高さをオフセットするための定数（メートル単位）
 
 const MODEL_PATHS = {
-  boat: "/data/models/boat/boat.gltf",
-  leftOar: "/data/models/left_oar/left_oar.gltf",
-  rightOar: "/data/models/right_oar/right_oar.gltf",
-} as const;
+  boat: `${import.meta.env.BASE_URL}data/models/boat/boat.gltf`,
+  leftOar: `${import.meta.env.BASE_URL}data/models/left_oar/left_oar.gltf`,
+  rightOar: `${import.meta.env.BASE_URL}data/models/right_oar/right_oar.gltf`,
+};
 
 function asNumber(value: unknown, fallback = 0): number {
   if (typeof value === "number" && Number.isFinite(value)) {

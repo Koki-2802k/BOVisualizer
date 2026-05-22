@@ -279,7 +279,7 @@ export default function PlaybackControls({
         }}
         title="設定オプションを表示"
       >
-        <img src="/BOV_logo.png" alt="BOV logo" className="app-logo" />
+        <img src={`${import.meta.env.BASE_URL}BOV_logo.png`} alt="BOV logo" className="app-logo" />
         {showOptions && (
           <div className="options-popover" onClick={(e) => e.stopPropagation()}>
             <h4 style={{ margin: '0 0 12px 0', fontSize: '35px', color: '#f8fafc', borderBottom: '1px solid rgba(255, 255, 255, 0.15)', paddingBottom: '8px', textAlign: 'left', fontWeight: 600 }}>設定オプション</h4>
@@ -422,7 +422,7 @@ export default function PlaybackControls({
         className="reload-btn"
         title="フォルダ内を再読み込み"
       >
-        <img src="/RELOAD.png" alt="再読み込み" className={isSpinning ? 'spinning' : ''} />
+        <img src={`${import.meta.env.BASE_URL}RELOAD.png`} alt="再読み込み" className={isSpinning ? 'spinning' : ''} />
       </button>
     </section>
   );
