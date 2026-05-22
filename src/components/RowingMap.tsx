@@ -1,8 +1,22 @@
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useMemo } from 'react';
 import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import type { LatLngExpression } from 'leaflet';
 import type { GpsPoint } from '../types/rowing';
+
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+// LeafletのデフォルトアイコンがVite等のバンドラー経由で正しくロードされない問題の解決
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+});
+
 
 const FALLBACK_CENTER: LatLngExpression = [35.681236, 139.767125];
 

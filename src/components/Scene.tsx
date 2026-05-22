@@ -27,8 +27,10 @@ type LoadedModels = {
 
 const INBOARD_OFFSET: [number, number, number] = [0, 0, 0];
 const BOAT_FIXED_ROTATION = new Euler(0, 0, -Math.PI / 180, "XYZ");
-const LEFT_OAR_HEIGHT_OFFSET = -0.1; // 左オールのブレード先端高さをオフセットするための定数（メートル単位）
-const RIGHT_OAR_HEIGHT_OFFSET = -0.01; // 右オールのブレード先端高さをオフセットするための定数（メートル単位）
+const LEFT_OAR_HEIGHT_OFFSET = 0.0; // 左オールのブレード先端高さをオフセットするための定数（メートル単位）
+const RIGHT_OAR_HEIGHT_OFFSET = -0.2; // 右オールのブレード先端高さをオフセットするための定数（メートル単位）
+const OAR_OUTBOARD_LENGTH = 2.0; // オールロックからブレード先端までの長さ（メートル）
+
 
 const MODEL_PATHS = {
   boat: `${import.meta.env.BASE_URL}data/models/boat/boat.gltf`,
@@ -134,13 +136,17 @@ function SceneRig({ frames, frameIndex, models }: SceneProps & { models: LoadedM
 
       <group ref={leftPivotRef} position={LEFT_OARLOCK}>
         <group rotation={getOarFixedRotation("left")} position={INBOARD_OFFSET}>
-          <primitive object={clonedLeft} position={[0, LEFT_OAR_HEIGHT_OFFSET, 0]} />
+          <group rotation={[LEFT_OAR_HEIGHT_OFFSET / OAR_OUTBOARD_LENGTH, 0, 0]}>
+            <primitive object={clonedLeft} />
+          </group>
         </group>
       </group>
 
       <group ref={rightPivotRef} position={RIGHT_OARLOCK}>
         <group rotation={getOarFixedRotation("right")} position={INBOARD_OFFSET}>
-          <primitive object={clonedRight} position={[0, RIGHT_OAR_HEIGHT_OFFSET, 0]} />
+          <group rotation={[-RIGHT_OAR_HEIGHT_OFFSET / OAR_OUTBOARD_LENGTH, 0, 0]}>
+            <primitive object={clonedRight} />
+          </group>
         </group>
       </group>
     </group>
