@@ -138,6 +138,7 @@
   flex-wrap: wrap;
   padding: 6px 10px;
   min-height: 48px;
+  background: #ffffff; /* ツールバーを完全に不透明な白にし、ロゴ等の白背景を完全に同化させる */
 }
 
 /* 各コントロール用ラベル */
@@ -444,6 +445,7 @@
   object-fit: contain;
   transition: transform 0.25s ease, filter 0.25s ease;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
+  mix-blend-mode: multiply; /* 画像の白背景をツールバーに自然にブレンドさせて透過 */
 }
 
 .app-logo:hover {
@@ -486,9 +488,9 @@
   min-height: 45px;
   width: 45px;
   padding: 0;
-  border: 1px solid #94a3b8;
+  border: 1px solid #cbd5e1; /* ツールバーのボーダー色に統合 */
   border-radius: 6px;
-  background: #ffffff;
+  background: #ffffff; /* 完全に不透明な白にして、再読み込み画像の白背景と同化 */
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
@@ -511,12 +513,14 @@
   height: 40px;
   object-fit: contain;
   transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  mix-blend-mode: multiply; /* 白背景をブレンドさせて透過 */
 }
 
 .reload-btn:hover img {
   transform: rotate(360deg);
   /* ホバー時にアイコンがスムーズに360度スピンするエフェクト */
 }
+
 
 @keyframes reload-spin {
   0% {
