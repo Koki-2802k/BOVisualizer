@@ -25,6 +25,8 @@ function App() {
     directoryHandle,
     autoReloadEnabled,
     autoReloadInterval,
+    initialOarSide,
+    initialGraphMode,
     setDatasets,
     setSelectedDatasetId,
     setIsPlaying,
@@ -36,6 +38,8 @@ function App() {
     setDirectoryHandle,
     setAutoReloadEnabled,
     setAutoReloadInterval,
+    setInitialOarSide,
+    setInitialGraphMode,
   } = usePlaybackStore();
 
   const datasetState = useDataset(selectedDatasetId);
@@ -153,6 +157,10 @@ function App() {
         onDirectoryHandleChange={setDirectoryHandle}
         onAutoReloadEnabledChange={setAutoReloadEnabled}
         onAutoReloadIntervalChange={setAutoReloadInterval}
+        initialOarSide={initialOarSide}
+        initialGraphMode={initialGraphMode}
+        onInitialOarSideChange={setInitialOarSide}
+        onInitialGraphModeChange={setInitialGraphMode}
       />
       <div className="dashboard-area">
         {error ? (

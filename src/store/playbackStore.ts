@@ -14,6 +14,9 @@ type PlaybackState = {
   directoryHandle: FileSystemDirectoryHandle | null;
   autoReloadEnabled: boolean;
   autoReloadInterval: number;
+  initialOarSide: 'right' | 'left';
+  initialGraphMode: GraphMode;
+  oarSide: 'right' | 'left';
   setDatasets: (datasets: DatasetManifestItem[]) => void;
   setSelectedDatasetId: (datasetId: string) => void;
   setIsPlaying: (isPlaying: boolean) => void;
@@ -21,6 +24,9 @@ type PlaybackState = {
   setSeekFrame: (seekFrame: number) => void;
   setMaxFrame: (maxFrame: number) => void;
   setGraphMode: (graphMode: GraphMode) => void;
+  setInitialOarSide: (side: 'right' | 'left') => void;
+  setInitialGraphMode: (mode: GraphMode) => void;
+  setOarSide: (side: 'right' | 'left') => void;
   addCustomDataset: (id: string, label: string, data: DatasetCsv) => void;
   setCustomDatasets: (items: Array<{ id: string; label: string; data: DatasetCsv }>) => void;
   setDirectoryHandle: (handle: FileSystemDirectoryHandle | null) => void;
@@ -50,17 +56,35 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
   maxFrame: 0,
   graphMode: 'acceleration',
   directoryHandle: null,
+  initialOarSide: 'right',
+  initialGraphMode: 'acceleration',
+  oarSide: 'right',
+  setInitialOarSide: (initialOarSide) => set({ initialOarSide }),
+  setInitialGraphMode: (initialGraphMode) => set({ initialGraphMode }),
+  setOarSide: (oarSide) => set({ oarSide }),
   setDatasets: (datasets) => {
     const sorted = sortDatasets(datasets);
     const nextSelected = get().selectedDatasetId || sorted[0]?.id || '';
+    const changed = get().selectedDatasetId !== nextSelected;
     set({
       datasets: sorted,
       selectedDatasetId: sorted.some((dataset) => dataset.id === nextSelected)
         ? nextSelected
         : sorted[0]?.id || '',
+      ...(changed && {
+        oarSide: get().initialOarSide,
+        graphMode: get().initialGraphMode,
+      }),
     });
   },
-  setSelectedDatasetId: (selectedDatasetId) => set({ selectedDatasetId, seekFrame: 0, isPlaying: false }),
+  setSelectedDatasetId: (selectedDatasetId) =>
+    set({
+      selectedDatasetId,
+      seekFrame: 0,
+      isPlaying: false,
+      oarSide: get().initialOarSide,
+      graphMode: get().initialGraphMode,
+    }),
   setIsPlaying: (isPlaying) => set({ isPlaying }),
   setFps: (fps) => set({ fps: clamp(Math.round(fps), 1, 120) }),
   setSeekFrame: (seekFrame) => {
@@ -92,6 +116,8 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
       selectedDatasetId: id,
       seekFrame: 0,
       isPlaying: false,
+      oarSide: state.initialOarSide,
+      graphMode: state.initialGraphMode,
     }));
   },
   setCustomDatasets: (items) => {
@@ -116,6 +142,10 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
       selectedDatasetId: hasPrev ? prevSelected : (sorted[0]?.id || ''),
       seekFrame: hasPrev ? get().seekFrame : 0,
       isPlaying: hasPrev ? get().isPlaying : false,
+      ...(!hasPrev && {
+        oarSide: get().initialOarSide,
+        graphMode: get().initialGraphMode,
+      }),
     });
   },
   setDirectoryHandle: (directoryHandle) => set({ directoryHandle }),

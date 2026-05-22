@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { useEffect, useMemo, useRef, type RefObject } from "react";
 import type { RowingFrame } from "../types/rowing";
 
 export type GraphMode = "acceleration" | "gyro" | "speed";
@@ -105,7 +105,7 @@ const drawText = (
   ctx.restore();
 };
 
-const resizeCanvas = (canvas: HTMLCanvasElement, box: CanvasBox, canvasSize: MutableRefObject<CanvasSize>) => {
+const resizeCanvas = (canvas: HTMLCanvasElement, box: CanvasBox, canvasSize: RefObject<CanvasSize>) => {
   const nextWidth = Math.max(1, Math.round(box.width));
   const nextHeight = Math.max(1, Math.round(box.height));
   if (canvasSize.current.w === nextWidth && canvasSize.current.h === nextHeight) {
@@ -133,7 +133,7 @@ const measureCanvasBox = (wrapper: HTMLDivElement): CanvasBox | null => {
   };
 };
 
-const resolveCanvasBox = (wrapper: HTMLDivElement, canvasSize: MutableRefObject<CanvasSize>): CanvasBox | null => {
+const resolveCanvasBox = (wrapper: HTMLDivElement, canvasSize: RefObject<CanvasSize>): CanvasBox | null => {
   const { w, h } = canvasSize.current;
   if (w > 0 && h > 0) {
     return { width: w, height: h };

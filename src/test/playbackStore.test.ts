@@ -89,3 +89,42 @@ describe('usePlaybackStore - Dataset Reload & Selection Persist', () => {
     expect(usePlaybackStore.getState().selectedDatasetId).toBe('local-sample_1.csv');
   });
 });
+
+describe('usePlaybackStore - Initial Defaults and Reset Behavior', () => {
+  it('initializes with right oar side and acceleration mode', () => {
+    const store = usePlaybackStore.getState();
+    expect(store.initialOarSide).toBe('right');
+    expect(store.initialGraphMode).toBe('acceleration');
+    expect(store.oarSide).toBe('right');
+    expect(store.graphMode).toBe('acceleration');
+  });
+
+  it('updates initial default options and resets active modes when new dataset is selected', () => {
+    const store = usePlaybackStore.getState();
+
+    // 1. Change initial defaults
+    store.setInitialOarSide('left');
+    store.setInitialGraphMode('gyro');
+    expect(usePlaybackStore.getState().initialOarSide).toBe('left');
+    expect(usePlaybackStore.getState().initialGraphMode).toBe('gyro');
+
+    // 2. Select a dataset
+    store.setSelectedDatasetId('some-new-dataset');
+
+    // 3. Active selections should reset to the new defaults
+    expect(usePlaybackStore.getState().oarSide).toBe('left');
+    expect(usePlaybackStore.getState().graphMode).toBe('gyro');
+
+    // 4. Manually change active selection during play
+    store.setOarSide('right');
+    store.setGraphMode('speed');
+    expect(usePlaybackStore.getState().oarSide).toBe('right');
+    expect(usePlaybackStore.getState().graphMode).toBe('speed');
+
+    // 5. Select a different dataset, active selection should reset back to defaults
+    store.setSelectedDatasetId('another-dataset');
+    expect(usePlaybackStore.getState().oarSide).toBe('left');
+    expect(usePlaybackStore.getState().graphMode).toBe('gyro');
+  });
+});
+

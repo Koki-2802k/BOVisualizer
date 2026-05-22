@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { useEffect, useMemo, useRef, type RefObject } from "react";
 import type { RowingFrame } from "../types/rowing";
 import { buildOarTrajectory } from "../utils/trajectory";
+import { usePlaybackStore } from "../store/playbackStore";
 
 type Props = {
   frames: RowingFrame[];
@@ -16,7 +17,7 @@ const TRAJECTORY_DOMAIN = {
 
 const COLOR_BY_ANGLE = {
   normal: "#111827",
-  alert: "#dc2626",
+  ideal: "#dc2626",
   background: "#ffffff",
   grid: "#d7d7d7",
   axis: "#6b7280",
@@ -37,7 +38,7 @@ const SYMBOL_STROKE_WIDTH = 2.5;
 const HIGHLIGHT_HALF_LENGTH = 20;
 const HIGHLIGHT_STROKE_WIDTH = 4;
 
-const isAlertAngle = (angle: number): boolean => {
+const isIdealAngle = (angle: number): boolean => {
   const com = Math.abs(Math.trunc(angle)) % 180;
   return com > 40 && com < 140;
 };
@@ -82,15 +83,17 @@ const drawArrow = (ctx: CanvasRenderingContext2D, x: number, y: number, angleDeg
   ctx.fillStyle = COLOR_BY_ANGLE.accent;
   ctx.lineWidth = 4;
 
+  // Shaft (stick): ends at 12 to overlap inside the arrowhead (which starts at 10)
   ctx.beginPath();
   ctx.moveTo(-30, 0);
-  ctx.lineTo(30, 0);
+  ctx.lineTo(12, 0);
   ctx.stroke();
 
+  // Arrowhead (triangle): larger size (tip at 32, back edge at 10, half-width 12)
   ctx.beginPath();
-  ctx.moveTo(30, 0);
-  ctx.lineTo(12, -10);
-  ctx.lineTo(12, 10);
+  ctx.moveTo(32, 0);
+  ctx.lineTo(10, -12);
+  ctx.lineTo(10, 12);
   ctx.closePath();
   ctx.fill();
   ctx.restore();
@@ -118,7 +121,7 @@ const drawRotatedSymbol = (
   ctx.restore();
 };
 
-const resizeCanvas = (canvas: HTMLCanvasElement, box: CanvasBox, canvasSize: MutableRefObject<CanvasSize>) => {
+const resizeCanvas = (canvas: HTMLCanvasElement, box: CanvasBox, canvasSize: RefObject<CanvasSize>) => {
   const nextWidth = Math.max(1, Math.round(box.width));
   const nextHeight = Math.max(1, Math.round(box.height));
   if (canvasSize.current.w === nextWidth && canvasSize.current.h === nextHeight) {
@@ -146,7 +149,7 @@ const measureCanvasBox = (wrapper: HTMLDivElement): CanvasBox | null => {
   };
 };
 
-const resolveCanvasBox = (wrapper: HTMLDivElement, canvasSize: MutableRefObject<CanvasSize>): CanvasBox | null => {
+const resolveCanvasBox = (wrapper: HTMLDivElement, canvasSize: RefObject<CanvasSize>): CanvasBox | null => {
   const { w, h } = canvasSize.current;
   if (w > 0 && h > 0) {
     return { width: w, height: h };
@@ -282,18 +285,20 @@ const drawCanvas = (
     });
   }
 
+  const angleColor = isIdealAngle(currentAngle) ? COLOR_BY_ANGLE.ideal : "#111111";
+
   drawText(ctx, `Angle: ${formatAngle(currentAngle)}`, PLOT_PADDING.left, 24, {
     align: "left",
     baseline: "middle",
-    size: 18,
+    size: 24,
     bold: true,
-    color: "#111111",
+    color: angleColor,
   });
 
   points.slice(0, currentIndex + 1).forEach((point, index) => {
     const { x, y } = worldToCanvas(point.x, point.z);
     const isCurrent = index === currentIndex;
-    const strokeColor = isCurrent ? COLOR_BY_ANGLE.highlight : isAlertAngle(point.angle) ? COLOR_BY_ANGLE.alert : COLOR_BY_ANGLE.normal;
+    const strokeColor = isCurrent ? COLOR_BY_ANGLE.highlight : isIdealAngle(point.angle) ? COLOR_BY_ANGLE.ideal : COLOR_BY_ANGLE.normal;
     const halfLength = isCurrent ? HIGHLIGHT_HALF_LENGTH : SYMBOL_HALF_LENGTH;
     const strokeWidth = isCurrent ? HIGHLIGHT_STROKE_WIDTH : SYMBOL_STROKE_WIDTH;
     drawRotatedSymbol(ctx, x, y, point.angle, strokeColor, halfLength, strokeWidth);
@@ -309,7 +314,7 @@ const drawCanvas = (
 };
 
 export default function OarTrajectoryChart({ frames, currentIndex }: Props) {
-  const [oarSide, setOarSide] = useState<OarSide>("right");
+  const { oarSide, setOarSide } = usePlaybackStore();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasSizeRef = useRef<CanvasSize>({ w: 0, h: 0 });

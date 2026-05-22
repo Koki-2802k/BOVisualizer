@@ -44,6 +44,10 @@ type PlaybackControlsProps = {
   onDirectoryHandleChange?: (handle: FileSystemDirectoryHandle | null) => void;
   onAutoReloadEnabledChange?: (enabled: boolean) => void;
   onAutoReloadIntervalChange?: (interval: number) => void;
+  initialOarSide?: 'right' | 'left';
+  initialGraphMode?: GraphMode;
+  onInitialOarSideChange?: (side: 'right' | 'left') => void;
+  onInitialGraphModeChange?: (mode: GraphMode) => void;
 };
 
 export default function PlaybackControls({
@@ -67,6 +71,10 @@ export default function PlaybackControls({
   onDirectoryHandleChange,
   onAutoReloadEnabledChange,
   onAutoReloadIntervalChange,
+  initialOarSide = 'right',
+  initialGraphMode = 'acceleration',
+  onInitialOarSideChange,
+  onInitialGraphModeChange,
 }: PlaybackControlsProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -308,6 +316,55 @@ export default function PlaybackControls({
                 disabled={!autoReloadEnabled}
                 style={{ width: '100%', cursor: autoReloadEnabled ? 'pointer' : 'not-allowed', opacity: autoReloadEnabled ? 1 : 0.5, margin: '6px 0 0 0', height: '30px' }}
               />
+            </label>
+
+            <label className="option-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#e2e8f0', fontSize: '20px', textAlign: 'left', minWidth: 'auto', fontWeight: 500, margin: '8px 0 0 0' }}>
+              <span style={{ userSelect: 'none' }}>初期表示オール軌跡</span>
+              <select
+                value={initialOarSide}
+                onChange={(e) => onInitialOarSideChange?.(e.target.value as 'right' | 'left')}
+                style={{
+                  minHeight: '36px',
+                  padding: '4px 12px',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                  color: '#f8fafc',
+                  fontSize: '18px',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  width: '100%',
+                  outline: 'none',
+                }}
+              >
+                <option value="right" style={{ backgroundColor: '#1e293b' }}>右オール</option>
+                <option value="left" style={{ backgroundColor: '#1e293b' }}>左オール</option>
+              </select>
+            </label>
+
+            <label className="option-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#e2e8f0', fontSize: '20px', textAlign: 'left', minWidth: 'auto', fontWeight: 500, margin: '8px 0 0 0' }}>
+              <span style={{ userSelect: 'none' }}>初期表示時系列グラフ</span>
+              <select
+                value={initialGraphMode}
+                onChange={(e) => onInitialGraphModeChange?.(e.target.value as GraphMode)}
+                style={{
+                  minHeight: '36px',
+                  padding: '4px 12px',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                  color: '#f8fafc',
+                  fontSize: '18px',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  width: '100%',
+                  outline: 'none',
+                }}
+              >
+                <option value="acceleration" style={{ backgroundColor: '#1e293b' }}>加速度</option>
+                <option value="gyro" style={{ backgroundColor: '#1e293b' }}>ジャイロ</option>
+                <option value="speed" style={{ backgroundColor: '#1e293b' }}>速度</option>
+              </select>
             </label>
           </div>
         )}
