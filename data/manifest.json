@@ -3,81 +3,81 @@
     {
       "id": "sample_1",
       "label": "サンプル 1",
-      "path": "/data/samples/sample_1.csv"
+      "path": "data/samples/sample_1.csv"
     },
     {
       "id": "sample_2",
       "label": "サンプル 2",
-      "path": "/data/samples/sample_2.csv"
+      "path": "data/samples/sample_2.csv"
     },
     {
       "id": "sample_3",
       "label": "サンプル 3",
-      "path": "/data/samples/sample_3.csv"
+      "path": "data/samples/sample_3.csv"
     },
     {
       "id": "sample_4",
       "label": "サンプル 4",
-      "path": "/data/samples/sample_4.csv"
+      "path": "data/samples/sample_4.csv"
     },
     {
       "id": "sample_5",
       "label": "サンプル 5",
-      "path": "/data/samples/sample_5.csv"
+      "path": "data/samples/sample_5.csv"
     },
     {
       "id": "sample_6",
       "label": "サンプル 6",
-      "path": "/data/samples/sample_6.csv"
+      "path": "data/samples/sample_6.csv"
     },
     {
       "id": "sample_7",
       "label": "サンプル 7",
-      "path": "/data/samples/sample_7.csv"
+      "path": "data/samples/sample_7.csv"
     },
     {
       "id": "sample_8",
       "label": "サンプル 8",
-      "path": "/data/samples/sample_8.csv"
+      "path": "data/samples/sample_8.csv"
     },
     {
       "id": "sample_9",
       "label": "サンプル 9",
-      "path": "/data/samples/sample_9.csv"
+      "path": "data/samples/sample_9.csv"
     },
     {
       "id": "sample_10",
       "label": "サンプル 10",
-      "path": "/data/samples/sample_10.csv"
+      "path": "data/samples/sample_10.csv"
     },
     {
       "id": "sample_11",
       "label": "サンプル 11",
-      "path": "/data/samples/sample_11.csv"
+      "path": "data/samples/sample_11.csv"
     },
     {
       "id": "sample_12",
       "label": "サンプル 12",
-      "path": "/data/samples/sample_12.csv"
+      "path": "data/samples/sample_12.csv"
     },
     {
       "id": "sample_13",
       "label": "サンプル 13",
-      "path": "/data/samples/sample_13.csv"
+      "path": "data/samples/sample_13.csv"
     }
   ],
   "models": {
     "boat": {
-      "gltf": "/data/models/boat/boat.gltf",
-      "bin": "/data/models/boat/boat_0.bin"
+      "gltf": "data/models/boat/boat.gltf",
+      "bin": "data/models/boat/boat_0.bin"
     },
     "left_oar": {
-      "gltf": "/data/models/left_oar/left_oar.gltf",
-      "bin": "/data/models/left_oar/left_oar_0.bin"
+      "gltf": "data/models/left_oar/left_oar.gltf",
+      "bin": "data/models/left_oar/left_oar_0.bin"
     },
     "right_oar": {
-      "gltf": "/data/models/right_oar/right_oar.gltf",
-      "bin": "/data/models/right_oar/right_oar_0.bin"
+      "gltf": "data/models/right_oar/right_oar.gltf",
+      "bin": "data/models/right_oar/right_oar_0.bin"
     }
   }
 }
