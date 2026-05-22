@@ -271,7 +271,7 @@ export default function PlaybackControls({
 
   return (
     <section className="panel controls" aria-label="再生操作">
-      <div 
+      <div
         className="logo-container"
         onClick={(e) => {
           e.stopPropagation();
@@ -282,19 +282,19 @@ export default function PlaybackControls({
         <img src={`${import.meta.env.BASE_URL}BOV_logo.png`} alt="BOV logo" className="app-logo" />
         {showOptions && (
           <div className="options-popover" onClick={(e) => e.stopPropagation()}>
-            <h4 style={{ margin: '0 0 12px 0', fontSize: '35px', color: '#f8fafc', borderBottom: '1px solid rgba(255, 255, 255, 0.15)', paddingBottom: '8px', textAlign: 'left', fontWeight: 600 }}>設定オプション</h4>
-            
+            <h4 style={{ margin: '0 0 12px 0', fontSize: '30px', color: '#f8fafc', borderBottom: '1px solid rgba(255, 255, 255, 0.15)', paddingBottom: '8px', textAlign: 'left', fontWeight: 600 }}>設定オプション</h4>
+
             <label className="option-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', cursor: 'pointer', color: '#e2e8f0', fontSize: '30px', margin: '8px 0 12px 0', minWidth: 'auto', fontWeight: 500 }}>
               <input
                 type="checkbox"
                 checked={autoReloadEnabled}
                 onChange={(e) => onAutoReloadEnabledChange?.(e.target.checked)}
-                style={{ width: '30px', height: '30px', cursor: 'pointer', margin: 0 }}
+                style={{ width: '30px', height: '27px', cursor: 'pointer', margin: 0 }}
               />
               <span style={{ userSelect: 'none' }}>自動再読み込みを有効化</span>
             </label>
-            
-            <label className="option-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#e2e8f0', fontSize: '30px', textAlign: 'left', minWidth: 'auto', fontWeight: 500 }}>
+
+            <label className="option-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#e2e8f0', fontSize: '25px', textAlign: 'left', minWidth: 'auto', fontWeight: 500 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '16px' }}>
                 <span style={{ userSelect: 'none' }}>再読み込み間隔:</span>
                 <span style={{ fontWeight: 'bold', color: '#38bdf8' }}>{autoReloadInterval}秒</span>
