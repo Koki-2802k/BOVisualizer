@@ -285,14 +285,28 @@ const drawCanvas = (
     });
   }
 
-  const angleColor = isIdealAngle(currentAngle) ? COLOR_BY_ANGLE.ideal : "#111111";
+  const labelText = "Angle: ";
+  const valueText = formatAngle(currentAngle);
 
-  drawText(ctx, `Angle: ${formatAngle(currentAngle)}`, PLOT_PADDING.left, 24, {
+  ctx.save();
+  ctx.font = "bold 24px Arial, sans-serif";
+  const labelWidth = ctx.measureText(labelText).width;
+  ctx.restore();
+
+  drawText(ctx, labelText, PLOT_PADDING.left, 24, {
     align: "left",
     baseline: "middle",
     size: 24,
     bold: true,
-    color: angleColor,
+    color: "#111111",
+  });
+
+  drawText(ctx, valueText, PLOT_PADDING.left + labelWidth, 24, {
+    align: "left",
+    baseline: "middle",
+    size: 24,
+    bold: true,
+    color: COLOR_BY_ANGLE.ideal,
   });
 
   points.slice(0, currentIndex + 1).forEach((point, index) => {
