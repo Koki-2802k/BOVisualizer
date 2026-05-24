@@ -1,9 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import Scene from './components/Scene';
+import { useEffect, useMemo, lazy, Suspense } from 'react';
 import PlaybackControls from './components/PlaybackControls';
-import OarTrajectoryChart from './components/OarTrajectoryChart';
-import TimeSeriesChart from './components/TimeSeriesChart';
-import RowingMap from './components/RowingMap';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useAnimationClock } from './hooks/useAnimationClock';
 import { useDataset } from './hooks/useDataset';
@@ -11,6 +7,11 @@ import { usePlaybackStore } from './store/playbackStore';
 import { deriveMetrics } from './utils/metrics';
 import './App.css';
 import './index.css';
+
+const Scene = lazy(() => import('./components/Scene'));
+const OarTrajectoryChart = lazy(() => import('./components/OarTrajectoryChart'));
+const TimeSeriesChart = lazy(() => import('./components/TimeSeriesChart'));
+const RowingMap = lazy(() => import('./components/RowingMap'));
 
 function App() {
   const {
@@ -172,29 +173,37 @@ function App() {
         <section className="dashboard-grid" aria-label="統合ダッシュボード">
           <section className="panel scene-wrapper" aria-label="3Dシーン">
             <ErrorBoundary fallbackTitle="3D表示エラー">
-              <Scene frames={frames} frameIndex={uiFrame} />
+              <Suspense fallback={<div className="panel overlay-message loading">3D表示を読み込み中...</div>}>
+                <Scene frames={frames} frameIndex={uiFrame} />
+              </Suspense>
             </ErrorBoundary>
           </section>
           <section className="panel oar-wrapper" aria-label="オール軌跡">
             <ErrorBoundary fallbackTitle="軌跡表示エラー">
-              <OarTrajectoryChart frames={frames} currentIndex={uiFrame} />
+              <Suspense fallback={<div className="panel overlay-message loading">オール軌跡を読み込み中...</div>}>
+                <OarTrajectoryChart frames={frames} currentIndex={uiFrame} />
+              </Suspense>
             </ErrorBoundary>
           </section>
           <section className="panel map-wrapper" aria-label="地図">
             <ErrorBoundary fallbackTitle="地図表示エラー">
-              {metrics?.gpsValidPoints && metrics.gpsValidPoints.length > 0 ? (
-                <>
-                  <h3>GPS地図</h3>
-                  <RowingMap gpsPoints={metrics.gpsValidPoints} frameIndex={uiFrame} />
-                </>
-              ) : (
-                <RowingMap gpsPoints={[]} frameIndex={uiFrame} />
-              )}
+              <Suspense fallback={<div className="panel overlay-message loading">地図を読み込み中...</div>}>
+                {metrics?.gpsValidPoints && metrics.gpsValidPoints.length > 0 ? (
+                  <>
+                    <h3>GPS地図</h3>
+                    <RowingMap gpsPoints={metrics.gpsValidPoints} frameIndex={uiFrame} />
+                  </>
+                ) : (
+                  <RowingMap gpsPoints={[]} frameIndex={uiFrame} />
+                )}
+              </Suspense>
             </ErrorBoundary>
           </section>
           <section className="panel timeseries-wrapper" aria-label="時系列グラフ">
             <ErrorBoundary fallbackTitle="時系列表示エラー">
-              <TimeSeriesChart frames={frames} currentIndex={uiFrame} mode={graphMode} />
+              <Suspense fallback={<div className="panel overlay-message loading">時系列グラフを読み込み中...</div>}>
+                <TimeSeriesChart frames={frames} currentIndex={uiFrame} mode={graphMode} />
+              </Suspense>
             </ErrorBoundary>
           </section>
         </section>
