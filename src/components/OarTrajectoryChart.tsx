@@ -205,7 +205,7 @@ const drawCanvas = (
     drawText(ctx, `${x}`, px, box.height - PLOT_PADDING.bottom + 18, {
       align: "center",
       baseline: "top",
-      size: 14,
+      size: 18,
       bold: true,
       color: "#374151",
     });
@@ -220,7 +220,7 @@ const drawCanvas = (
     drawText(ctx, `${z}`, PLOT_PADDING.left - 8, py, {
       align: "right",
       baseline: "middle",
-      size: 14,
+      size: 18,
       bold: true,
       color: "#374151",
     });
@@ -287,6 +287,7 @@ const drawCanvas = (
 
   const labelText = "Angle: ";
   const valueText = formatAngle(currentAngle);
+  const valueColor = isIdealAngle(currentAngle) ? COLOR_BY_ANGLE.ideal : "#111111";
 
   ctx.save();
   ctx.font = "bold 24px Arial, sans-serif";
@@ -306,7 +307,7 @@ const drawCanvas = (
     baseline: "middle",
     size: 24,
     bold: true,
-    color: COLOR_BY_ANGLE.ideal,
+    color: valueColor,
   });
 
   points.slice(0, currentIndex + 1).forEach((point, index) => {

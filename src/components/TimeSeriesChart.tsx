@@ -247,7 +247,7 @@ const drawTimeSeriesCanvas = (
     drawText(ctx, value.toFixed(1), x, box.height - PADDING.bottom + 18, {
       align: "center",
       baseline: "top",
-      size: 14,
+      size: 18,
       bold: true,
       color: "#374151",
     });
@@ -263,7 +263,7 @@ const drawTimeSeriesCanvas = (
     drawText(ctx, value.toFixed(1), PADDING.left - 8, py, {
       align: "right",
       baseline: "middle",
-      size: 14,
+      size: 18,
       bold: true,
       color: "#374151",
     });
