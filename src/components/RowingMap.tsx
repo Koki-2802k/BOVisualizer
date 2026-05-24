@@ -75,7 +75,7 @@ function RecenterButton({ center }: { center: LatLngExpression }) {
     >
       <button
         onClick={handleRecenter}
-        title="現在地に戻る（最大拡大）"
+        title="現在地に戻る"
         aria-label="現在地に戻る"
         style={{
           width: '34px',
