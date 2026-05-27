@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { OrbitControls, Mask, useMask } from "@react-three/drei";
 import { DoubleSide, Euler, Group, Quaternion } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import {
@@ -26,10 +26,11 @@ type LoadedModels = {
 };
 
 const INBOARD_OFFSET: [number, number, number] = [0, 0, 0];
-const BOAT_FIXED_ROTATION = new Euler(0, 0, -Math.PI / 180, "XYZ");
+const BOAT_FIXED_ROTATION = new Euler(0, 0, -2 * Math.PI / 180, "XYZ");
 const LEFT_OAR_HEIGHT_OFFSET = 0.0; // 左オールのブレード先端高さをオフセットするための定数（メートル単位）
-const RIGHT_OAR_HEIGHT_OFFSET = -0.2; // 右オールのブレード先端高さをオフセットするための定数（メートル単位）
+const RIGHT_OAR_HEIGHT_OFFSET = 0.0; // 右オールのブレード先端高さをオフセットするための定数（メートル単位）
 const OAR_OUTBOARD_LENGTH = 2.0; // オールロックからブレード先端までの長さ（メートル）
+const BOAT_HEIGHT_OFFSET = -0.065; // ボートの沈む高さをオフセットするための定数（メートル単位。負の値で深く沈む）
 
 
 const MODEL_PATHS = {
@@ -131,8 +132,14 @@ function SceneRig({ frames, frameIndex, models }: SceneProps & { models: LoadedM
   });
 
   return (
-    <group ref={boatRef}>
+    <group ref={boatRef} position={[0, BOAT_HEIGHT_OFFSET, 0]}>
       <primitive object={clonedBoat} />
+
+      {/* ボート内部への水面侵入（浸水）を防ぐためのステンシルマスク */}
+      {/* 揺れ（ロール・ピッチ・ボビング）に対応するため、高さを3.0mに増やして縦方向に拡張しています */}
+      <Mask id={1} colorWrite={false} depthWrite={false} position={[0, 0.0, 0]}>
+        <boxGeometry args={[6.5, 3.0, 0.42]} />
+      </Mask>
 
       <group ref={leftPivotRef} position={LEFT_OARLOCK}>
         <group rotation={getOarFixedRotation("left")} position={INBOARD_OFFSET}>
@@ -234,19 +241,27 @@ export default function Scene({ frames, frameIndex }: SceneProps) {
         <color attach="background" args={["#dceeff"]} />
         <ambientLight intensity={0.7} />
         <directionalLight position={[5, 8, 3]} intensity={1.2} />
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, WATER_SURFACE_Y, 0]} receiveShadow={false}>
-          <planeGeometry args={[30, 100]} />
-          <meshStandardMaterial
-            color="#60a5fa"
-            transparent
-            opacity={0.3}
-            side={DoubleSide}
-            depthWrite={false}
-          />
-        </mesh>
+        <Water />
         <SceneRig frames={frames} frameIndex={safeFrameIndex} models={models} />
         <OrbitControls enablePan enableRotate enableZoom />
       </Canvas>
     </div>
+  );
+}
+
+function Water() {
+  const stencil = useMask(1, true); // ID 1のマスク（ボート内側）の外側にのみ水面を描画
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, WATER_SURFACE_Y, 0]} receiveShadow={false}>
+      <planeGeometry args={[30, 100]} />
+      <meshStandardMaterial
+        color="#60a5fa"
+        transparent
+        opacity={0.3}
+        side={DoubleSide}
+        depthWrite={false}
+        {...stencil}
+      />
+    </mesh>
   );
 }
