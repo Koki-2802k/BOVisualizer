@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DatasetCsv, DatasetManifestItem } from '../types/rowing';
+import type { DatasetCsv, DatasetManifestItem, StrokeSegment, StrokeMetrics } from '../types/rowing';
 import type { GraphMode } from '../components/TimeSeriesChart';
 
 type PlaybackState = {
@@ -18,6 +18,8 @@ type PlaybackState = {
   initialGraphMode: GraphMode;
   oarSide: 'right' | 'left';
   playOnSwitch: boolean;
+  strokes: StrokeSegment[];
+  strokeMetrics: StrokeMetrics[];
   setDatasets: (datasets: DatasetManifestItem[]) => void;
   setSelectedDatasetId: (datasetId: string) => void;
   setIsPlaying: (isPlaying: boolean) => void;
@@ -34,6 +36,8 @@ type PlaybackState = {
   setDirectoryHandle: (handle: FileSystemDirectoryHandle | null) => void;
   setAutoReloadEnabled: (enabled: boolean) => void;
   setAutoReloadInterval: (interval: number) => void;
+  setStrokes: (strokes: StrokeSegment[]) => void;
+  setStrokeMetrics: (metrics: StrokeMetrics[]) => void;
 };
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
@@ -62,10 +66,14 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
   initialGraphMode: 'acceleration',
   oarSide: 'right',
   playOnSwitch: false,
+  strokes: [],
+  strokeMetrics: [],
   setInitialOarSide: (initialOarSide) => set({ initialOarSide }),
   setInitialGraphMode: (initialGraphMode) => set({ initialGraphMode }),
   setOarSide: (oarSide) => set({ oarSide }),
   setPlayOnSwitch: (playOnSwitch) => set({ playOnSwitch }),
+  setStrokes: (strokes) => set({ strokes }),
+  setStrokeMetrics: (strokeMetrics) => set({ strokeMetrics }),
   setDatasets: (datasets) => {
     const sorted = sortDatasets(datasets);
     const nextSelected = get().selectedDatasetId || sorted[0]?.id || '';

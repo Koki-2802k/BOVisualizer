@@ -1,7 +1,96 @@
 import { useRef, useState, useEffect } from 'react';
-import type { DatasetCsv, DatasetManifestItem, RowingFrame } from '../types/rowing';
+import type { DatasetCsv, DatasetManifestItem, RowingFrame, StrokeSegment } from '../types/rowing';
 import type { GraphMode } from './TimeSeriesChart';
 import { parseRowingCsv } from '../utils/csvParser';
+import { usePlaybackStore } from '../store/playbackStore';
+
+function getCurrentStrokeAndPhase(frameIndex: number, strokes: StrokeSegment[]) {
+  for (const stroke of strokes) {
+    if (frameIndex >= stroke.startFrame && frameIndex <= stroke.endFrame) {
+      let phase: 'Catch' | 'Drive' | 'Finish' | 'Recovery' = 'Recovery';
+      let phaseLabel = 'リカバリー';
+
+      if (frameIndex >= stroke.catchFrame && frameIndex < stroke.entryFrame) {
+        phase = 'Catch';
+        phaseLabel = 'キャッチ';
+      } else if (frameIndex >= stroke.entryFrame && frameIndex < stroke.finishThresholdFrame) {
+        phase = 'Drive';
+        phaseLabel = 'ドライブ';
+      } else if (frameIndex >= stroke.finishThresholdFrame && frameIndex < stroke.exitFrame) {
+        phase = 'Finish';
+        phaseLabel = 'フィニッシュ';
+      }
+
+      return {
+        strokeId: stroke.id,
+        phase,
+        phaseLabel,
+      };
+    }
+  }
+  return null;
+}
+
+function buildTimelineGradient(strokes: StrokeSegment[], maxFrame: number): string {
+  if (!strokes || strokes.length === 0 || maxFrame <= 0) {
+    return 'rgba(15, 23, 42, 0.08)';
+  }
+
+  const stops: string[] = [];
+  const firstCatch = strokes[0].catchFrame;
+  if (firstCatch > 0) {
+    const pct = (firstCatch / maxFrame) * 100;
+    stops.push(`rgba(15, 23, 42, 0.05) 0%`);
+    stops.push(`rgba(15, 23, 42, 0.05) ${pct}%`);
+  }
+
+  strokes.forEach((stroke) => {
+    const p1 = (stroke.catchFrame / maxFrame) * 100;
+    const p2 = (stroke.entryFrame / maxFrame) * 100;
+    const p3 = (stroke.finishThresholdFrame / maxFrame) * 100;
+    const p4 = (stroke.exitFrame / maxFrame) * 100;
+    const p5 = (stroke.endFrame / maxFrame) * 100;
+
+    stops.push(`rgba(239, 68, 68, 0.25) ${p1}%`);
+    stops.push(`rgba(239, 68, 68, 0.25) ${p2}%`);
+
+    stops.push(`rgba(59, 130, 246, 0.25) ${p2}%`);
+    stops.push(`rgba(59, 130, 246, 0.25) ${p3}%`);
+
+    stops.push(`rgba(168, 85, 247, 0.25) ${p3}%`);
+    stops.push(`rgba(168, 85, 247, 0.25) ${p4}%`);
+
+    stops.push(`rgba(34, 197, 94, 0.25) ${p4}%`);
+    stops.push(`rgba(34, 197, 94, 0.25) ${p5}%`);
+  });
+
+  const lastEnd = strokes[strokes.length - 1].endFrame;
+  if (lastEnd < maxFrame) {
+    const pct = (lastEnd / maxFrame) * 100;
+    stops.push(`rgba(15, 23, 42, 0.05) ${pct}%`);
+    stops.push(`rgba(15, 23, 42, 0.05) 100%`);
+  }
+
+  return `linear-gradient(to right, ${stops.join(', ')})`;
+}
+
+function getPhaseBgColor(phase: 'Catch' | 'Drive' | 'Finish' | 'Recovery'): string {
+  switch (phase) {
+    case 'Catch': return '#fee2e2';
+    case 'Drive': return '#dbeafe';
+    case 'Finish': return '#f3e8ff';
+    case 'Recovery': return '#dcfce7';
+  }
+}
+
+function getPhaseTextColor(phase: 'Catch' | 'Drive' | 'Finish' | 'Recovery'): string {
+  switch (phase) {
+    case 'Catch': return '#dc2626';
+    case 'Drive': return '#2563eb';
+    case 'Finish': return '#9333ea';
+    case 'Recovery': return '#16a34a';
+  }
+}
 
 const toNumber = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -81,6 +170,10 @@ export default function PlaybackControls({
   onPlayOnSwitchChange,
 }: PlaybackControlsProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const strokes = usePlaybackStore((state) => state.strokes);
+  const strokeInfo = getCurrentStrokeAndPhase(seekFrame, strokes);
+  const timelineGradient = buildTimelineGradient(strokes, maxFrame);
 
   const spm = currentFrame ? toNumber(currentFrame.SPM) : null;
   const split = currentFrame ? toNumber(currentFrame.SPLIT) : null;
@@ -429,13 +522,29 @@ export default function PlaybackControls({
 
       <label>
         フレーム
-        <input
-          type="range"
-          min={0}
-          max={maxFrame}
-          value={seekFrame}
-          onChange={(event) => onSeekChange(Number(event.target.value))}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', width: 'min(320px, 24vw)' }}>
+          <input
+            type="range"
+            min={0}
+            max={maxFrame}
+            value={seekFrame}
+            onChange={(event) => onSeekChange(Number(event.target.value))}
+            style={{ width: '100%', margin: 0 }}
+          />
+          {strokes && strokes.length > 0 && (
+            <div
+              style={{
+                height: '6px',
+                borderRadius: '3px',
+                background: timelineGradient,
+                marginTop: '-2px',
+                width: '100%',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1)',
+              }}
+              title="位相帯（赤: キャッチ, 青: ドライブ, 紫: フィニッシュ, 緑: リカバリー）"
+            />
+          )}
+        </div>
       </label>
 
       <span className="frame-readout">
@@ -500,6 +609,30 @@ export default function PlaybackControls({
         <span className="metric-item oar-angle"><span className="label">左オール</span><strong>{metricText(leftAngle, '°')}</strong></span>
         <span className="metric-item oar-angle"><span className="label">右オール</span><strong>{metricText(rightAngle, '°')}</strong></span>
       </div>
+      {strokeInfo && (
+        <div className="toolbar-metrics" style={{ marginLeft: 0 }}>
+          <span className="metric-item">
+            <span className="label">ストローク</span>
+            <strong>#{strokeInfo.strokeId}</strong>
+          </span>
+          <span
+            style={{
+              fontSize: '16px',
+              fontWeight: 700,
+              padding: '2px 8px',
+              borderRadius: '6px',
+              backgroundColor: getPhaseBgColor(strokeInfo.phase),
+              color: getPhaseTextColor(strokeInfo.phase),
+              marginLeft: '4px',
+              lineHeight: 1.2,
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+          >
+            {strokeInfo.phaseLabel}
+          </span>
+        </div>
+      )}
 
       <button
         type="button"

@@ -5,6 +5,7 @@ import { useAnimationClock } from './hooks/useAnimationClock';
 import { useDataset } from './hooks/useDataset';
 import { usePlaybackStore } from './store/playbackStore';
 import { deriveMetrics } from './utils/metrics';
+import { detectStrokes, computeStrokeMetrics } from './utils/strokeDetector';
 import './App.css';
 import './index.css';
 
@@ -12,6 +13,7 @@ const Scene = lazy(() => import('./components/Scene'));
 const OarTrajectoryChart = lazy(() => import('./components/OarTrajectoryChart'));
 const TimeSeriesChart = lazy(() => import('./components/TimeSeriesChart'));
 const RowingMap = lazy(() => import('./components/RowingMap'));
+const StrokeMetricsTable = lazy(() => import('./components/StrokeMetricsTable'));
 
 function App() {
   const {
@@ -29,6 +31,7 @@ function App() {
     initialOarSide,
     initialGraphMode,
     playOnSwitch,
+    oarSide,
     setDatasets,
     setSelectedDatasetId,
     setIsPlaying,
@@ -43,6 +46,8 @@ function App() {
     setInitialOarSide,
     setInitialGraphMode,
     setPlayOnSwitch,
+    setStrokes,
+    setStrokeMetrics,
   } = usePlaybackStore();
 
   const datasetState = useDataset(selectedDatasetId);
@@ -54,6 +59,19 @@ function App() {
     }
     return datasetState.dataset?.frames ?? [];
   }, [isCustom, selectedDatasetId, customDatasets, datasetState.dataset]);
+
+  useEffect(() => {
+    if (frames && frames.length > 0) {
+      const detected = detectStrokes(frames, oarSide);
+      setStrokes(detected);
+
+      const metrics = computeStrokeMetrics(frames);
+      setStrokeMetrics(metrics);
+    } else {
+      setStrokes([]);
+      setStrokeMetrics([]);
+    }
+  }, [frames, oarSide, setStrokes, setStrokeMetrics]);
 
   useEffect(() => {
     const customCount = Object.keys(customDatasets).length;
@@ -73,7 +91,7 @@ function App() {
     seekFrame,
   });
 
-  // Global Spacebar shortcut to play/pause & Arrow keys to change datasets
+  // Global Spacebar shortcut to play/pause & Arrow keys to change datasets & [ / ] keys to change strokes
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
@@ -116,13 +134,42 @@ function App() {
           }
         }
       }
+
+      if (event.code === 'BracketLeft' || event.key === '[') {
+        event.preventDefault();
+        const strokes = usePlaybackStore.getState().strokes;
+        if (strokes && strokes.length > 0) {
+          const prevStroke = [...strokes]
+            .reverse()
+            .find((stroke) => stroke.catchFrame < uiFrame);
+          if (prevStroke) {
+            setSeekFrame(prevStroke.catchFrame);
+          } else {
+            setSeekFrame(strokes[0].catchFrame);
+          }
+        }
+      }
+
+      if (event.code === 'BracketRight' || event.key === ']') {
+        event.preventDefault();
+        const strokes = usePlaybackStore.getState().strokes;
+        if (strokes && strokes.length > 0) {
+          const nextStroke = strokes.find((stroke) => stroke.catchFrame > uiFrame);
+          if (nextStroke) {
+            setSeekFrame(nextStroke.catchFrame);
+          } else {
+            const lastStroke = strokes[strokes.length - 1];
+            setSeekFrame(lastStroke.endFrame);
+          }
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isPlaying, setIsPlaying, datasets, selectedDatasetId, setSelectedDatasetId]);
+  }, [isPlaying, setIsPlaying, datasets, selectedDatasetId, setSelectedDatasetId, uiFrame, setSeekFrame]);
 
   const currentFrame = frames[uiFrame] ?? null;
   
@@ -207,6 +254,13 @@ function App() {
             <ErrorBoundary fallbackTitle="時系列表示エラー">
               <Suspense fallback={<div className="panel overlay-message loading">時系列グラフを読み込み中...</div>}>
                 <TimeSeriesChart frames={frames} currentIndex={uiFrame} mode={graphMode} />
+              </Suspense>
+            </ErrorBoundary>
+          </section>
+          <section className="panel metrics-wrapper" aria-label="ストローク別解析">
+            <ErrorBoundary fallbackTitle="ストローク別解析エラー">
+              <Suspense fallback={<div className="panel overlay-message loading">解析データを読み込み中...</div>}>
+                <StrokeMetricsTable />
               </Suspense>
             </ErrorBoundary>
           </section>
