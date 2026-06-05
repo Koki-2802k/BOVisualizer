@@ -48,6 +48,8 @@ type PlaybackControlsProps = {
   initialGraphMode?: GraphMode;
   onInitialOarSideChange?: (side: 'right' | 'left') => void;
   onInitialGraphModeChange?: (mode: GraphMode) => void;
+  playOnSwitch?: boolean;
+  onPlayOnSwitchChange?: (play: boolean) => void;
 };
 
 export default function PlaybackControls({
@@ -75,6 +77,8 @@ export default function PlaybackControls({
   initialGraphMode = 'acceleration',
   onInitialOarSideChange,
   onInitialGraphModeChange,
+  playOnSwitch = false,
+  onPlayOnSwitchChange,
 }: PlaybackControlsProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -366,11 +370,35 @@ export default function PlaybackControls({
                 <option value="speed" style={{ backgroundColor: '#1e293b' }}>速度</option>
               </select>
             </label>
+
+            <label className="option-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#e2e8f0', fontSize: '20px', textAlign: 'left', minWidth: 'auto', fontWeight: 500, margin: '8px 0 0 0' }}>
+              <span style={{ userSelect: 'none' }}>データ切替時の再生動作</span>
+              <select
+                value={playOnSwitch ? 'play' : 'stop'}
+                onChange={(e) => onPlayOnSwitchChange?.(e.target.value === 'play')}
+                style={{
+                  minHeight: '36px',
+                  padding: '4px 12px',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                  color: '#f8fafc',
+                  fontSize: '18px',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  width: '100%',
+                  outline: 'none',
+                }}
+              >
+                <option value="stop" style={{ backgroundColor: '#1e293b' }}>停止</option>
+                <option value="play" style={{ backgroundColor: '#1e293b' }}>開始</option>
+              </select>
+            </label>
           </div>
         )}
       </div>
-      <label>
-        データセット
+      <label style={{ alignItems: 'center' }}>
+        <span style={{ textAlign: 'center', width: '100%' }}>データセット</span>
         <select value={selectedDatasetId} onChange={(event) => onDatasetChange(event.target.value)}>
           {datasets.map((dataset) => (
             <option key={dataset.id} value={dataset.id}>

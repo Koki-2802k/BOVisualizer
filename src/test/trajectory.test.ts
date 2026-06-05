@@ -64,6 +64,19 @@ describe("buildOarTrajectory", () => {
     expect(pt.rightAngleDeg).toBeCloseTo(-30, 5);
   });
 
+  it("calculates leftAngleDeg and rightAngleDeg from quaternions when present", () => {
+    const frame = makeFrame({
+      angle_left: 45,
+      angle_right: -30,
+      wol: Math.cos(Math.PI / 4), xol: 0, yol: Math.sin(Math.PI / 4), zol: 0,
+      wor: Math.cos(Math.PI / 6), xor: 0, yor: Math.sin(Math.PI / 6), zor: 0,
+    });
+    const [pt] = buildOarTrajectory([frame]);
+
+    expect(pt.leftAngleDeg).toBeCloseTo(90, 3);
+    expect(pt.rightAngleDeg).toBeCloseTo(60, 3);
+  });
+
   it("accepts string-encoded numeric values", () => {
     const frame = makeFrame({
       number: "10",

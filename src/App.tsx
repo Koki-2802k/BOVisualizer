@@ -28,6 +28,7 @@ function App() {
     autoReloadInterval,
     initialOarSide,
     initialGraphMode,
+    playOnSwitch,
     setDatasets,
     setSelectedDatasetId,
     setIsPlaying,
@@ -41,6 +42,7 @@ function App() {
     setAutoReloadInterval,
     setInitialOarSide,
     setInitialGraphMode,
+    setPlayOnSwitch,
   } = usePlaybackStore();
 
   const datasetState = useDataset(selectedDatasetId);
@@ -162,6 +164,8 @@ function App() {
         initialGraphMode={initialGraphMode}
         onInitialOarSideChange={setInitialOarSide}
         onInitialGraphModeChange={setInitialGraphMode}
+        playOnSwitch={playOnSwitch}
+        onPlayOnSwitchChange={setPlayOnSwitch}
       />
       <div className="dashboard-area">
         {error ? (

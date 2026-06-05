@@ -126,5 +126,28 @@ describe('usePlaybackStore - Initial Defaults and Reset Behavior', () => {
     expect(usePlaybackStore.getState().oarSide).toBe('left');
     expect(usePlaybackStore.getState().graphMode).toBe('gyro');
   });
+
+  it('controls playOnSwitch default behavior and updates isPlaying when dataset is switched', () => {
+    const store = usePlaybackStore.getState();
+
+    // 1. Initial playOnSwitch is false
+    expect(store.playOnSwitch).toBe(false);
+
+    // 2. Setting playOnSwitch to true
+    store.setPlayOnSwitch(true);
+    expect(usePlaybackStore.getState().playOnSwitch).toBe(true);
+
+    // 3. Switch dataset, isPlaying should become true
+    store.setSelectedDatasetId('dataset-with-autoplay');
+    expect(usePlaybackStore.getState().isPlaying).toBe(true);
+
+    // 4. Setting playOnSwitch to false
+    store.setPlayOnSwitch(false);
+    expect(usePlaybackStore.getState().playOnSwitch).toBe(false);
+
+    // 5. Switch dataset again, isPlaying should become false
+    store.setSelectedDatasetId('dataset-without-autoplay');
+    expect(usePlaybackStore.getState().isPlaying).toBe(false);
+  });
 });
 

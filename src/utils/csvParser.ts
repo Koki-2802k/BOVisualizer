@@ -1,4 +1,5 @@
 import type { DatasetCsv, RowingFrame, RowingValue } from '../types/rowing';
+import { extractZXYEulerYDeg, makeSensorQuaternion } from './coordTransform';
 
 const MEASUREMENT_PREFIX = 'Measurement Mode:';
 
@@ -63,6 +64,51 @@ export const parseRowingCsv = (csvText: string): DatasetCsv => {
         const raw = row[index] ?? '';
         frame[header] = toNumberIfPossible(raw);
       });
+
+      const isFiniteNum = (val: unknown): boolean =>
+        (typeof val === 'number' && Number.isFinite(val)) ||
+        (typeof val === 'string' && val.trim().length > 0 && !Number.isNaN(Number(val)) && Number.isFinite(Number(val)));
+
+      const hasLeftQ =
+        frame.wol != null && frame.xol != null && frame.yol != null && frame.zol != null &&
+        isFiniteNum(frame.wol) && isFiniteNum(frame.xol) && isFiniteNum(frame.yol) && isFiniteNum(frame.zol);
+
+      const hasRightQ =
+        frame.wor != null && frame.xor != null && frame.yor != null && frame.zor != null &&
+        isFiniteNum(frame.wor) && isFiniteNum(frame.xor) && isFiniteNum(frame.yor) && isFiniteNum(frame.zor);
+
+      if (hasLeftQ) {
+        frame.angle_left = extractZXYEulerYDeg(
+          makeSensorQuaternion(
+            Number(frame.wol),
+            Number(frame.xol),
+            Number(frame.yol),
+            Number(frame.zol)
+          )
+        );
+      } else if (frame.angle_left !== undefined && frame.angle_left !== null) {
+        const num = Number(frame.angle_left);
+        if (Number.isFinite(num)) {
+          frame.angle_left = num;
+        }
+      }
+
+      if (hasRightQ) {
+        frame.angle_right = extractZXYEulerYDeg(
+          makeSensorQuaternion(
+            Number(frame.wor),
+            Number(frame.xor),
+            Number(frame.yor),
+            Number(frame.zor)
+          )
+        );
+      } else if (frame.angle_right !== undefined && frame.angle_right !== null) {
+        const num = Number(frame.angle_right);
+        if (Number.isFinite(num)) {
+          frame.angle_right = num;
+        }
+      }
+
       return frame;
     });
 

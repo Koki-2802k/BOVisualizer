@@ -17,6 +17,7 @@ type PlaybackState = {
   initialOarSide: 'right' | 'left';
   initialGraphMode: GraphMode;
   oarSide: 'right' | 'left';
+  playOnSwitch: boolean;
   setDatasets: (datasets: DatasetManifestItem[]) => void;
   setSelectedDatasetId: (datasetId: string) => void;
   setIsPlaying: (isPlaying: boolean) => void;
@@ -27,6 +28,7 @@ type PlaybackState = {
   setInitialOarSide: (side: 'right' | 'left') => void;
   setInitialGraphMode: (mode: GraphMode) => void;
   setOarSide: (side: 'right' | 'left') => void;
+  setPlayOnSwitch: (play: boolean) => void;
   addCustomDataset: (id: string, label: string, data: DatasetCsv) => void;
   setCustomDatasets: (items: Array<{ id: string; label: string; data: DatasetCsv }>) => void;
   setDirectoryHandle: (handle: FileSystemDirectoryHandle | null) => void;
@@ -59,9 +61,11 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
   initialOarSide: 'right',
   initialGraphMode: 'acceleration',
   oarSide: 'right',
+  playOnSwitch: false,
   setInitialOarSide: (initialOarSide) => set({ initialOarSide }),
   setInitialGraphMode: (initialGraphMode) => set({ initialGraphMode }),
   setOarSide: (oarSide) => set({ oarSide }),
+  setPlayOnSwitch: (playOnSwitch) => set({ playOnSwitch }),
   setDatasets: (datasets) => {
     const sorted = sortDatasets(datasets);
     const nextSelected = get().selectedDatasetId || sorted[0]?.id || '';
@@ -74,6 +78,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
       ...(changed && {
         oarSide: get().initialOarSide,
         graphMode: get().initialGraphMode,
+        isPlaying: get().playOnSwitch,
       }),
     });
   },
@@ -81,7 +86,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
     set({
       selectedDatasetId,
       seekFrame: 0,
-      isPlaying: false,
+      isPlaying: get().playOnSwitch,
       oarSide: get().initialOarSide,
       graphMode: get().initialGraphMode,
     }),
@@ -115,7 +120,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
       },
       selectedDatasetId: id,
       seekFrame: 0,
-      isPlaying: false,
+      isPlaying: state.playOnSwitch,
       oarSide: state.initialOarSide,
       graphMode: state.initialGraphMode,
     }));
@@ -141,7 +146,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
       customDatasets: nextCustomDatasets,
       selectedDatasetId: hasPrev ? prevSelected : (sorted[0]?.id || ''),
       seekFrame: hasPrev ? get().seekFrame : 0,
-      isPlaying: hasPrev ? get().isPlaying : false,
+      isPlaying: hasPrev ? get().isPlaying : get().playOnSwitch,
       ...(!hasPrev && {
         oarSide: get().initialOarSide,
         graphMode: get().initialGraphMode,

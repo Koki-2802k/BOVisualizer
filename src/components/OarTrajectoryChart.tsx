@@ -44,8 +44,7 @@ const isIdealAngle = (angle: number): boolean => {
 };
 
 const formatAngle = (angle: number): string => {
-  const negated = angle === 0 ? 0 : -angle;
-  return `${negated.toFixed(1)}°`;
+  return `${angle.toFixed(1)}°`;
 };
 
 type CanvasBox = {
@@ -465,8 +464,8 @@ export default function OarTrajectoryChart({ frames, currentIndex }: Props) {
               color: "#0f172a"
             }}
           >
-            <option value="right">右オール</option>
             <option value="left">左オール</option>
+            <option value="right">右オール</option>
           </select>
         </label>
       </div>

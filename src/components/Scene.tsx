@@ -26,7 +26,7 @@ type LoadedModels = {
 };
 
 const INBOARD_OFFSET: [number, number, number] = [0, 0, 0];
-const BOAT_FIXED_ROTATION = new Euler(0, 0, -2 * Math.PI / 180, "XYZ");
+const BOAT_FIXED_ROTATION = new Euler(0, Math.PI, -2 * Math.PI / 180, "XYZ");
 const LEFT_OAR_HEIGHT_OFFSET = 0.0; // 左オールのブレード先端高さをオフセットするための定数（メートル単位）
 const RIGHT_OAR_HEIGHT_OFFSET = 0.0; // 右オールのブレード先端高さをオフセットするための定数（メートル単位）
 const OAR_OUTBOARD_LENGTH = 2.0; // オールロックからブレード先端までの長さ（メートル）

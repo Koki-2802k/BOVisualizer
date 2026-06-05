@@ -60,4 +60,13 @@ number,time,wol
     expect(metrics.gpsValidPoints.length).toBe(result.frames.length);
     expect(metrics.graphSeries.speed.length).toBe(result.frames.length);
   });
+
+  it('overrides angle_left and angle_right with uncorrected values calculated from quaternions if present', () => {
+    const mockCsv = `number,time,wol,xol,yol,zol,wor,xor,yor,zor,angle_left,angle_right
+1,2024-12-20 16:50:11.360461,0.70710678,0,0.70710678,0,0.8660254,0,0.5,0,45,-30`;
+    const result = parseRowingCsv(mockCsv);
+
+    expect(result.frames[0].angle_left).toBeCloseTo(90, 3);
+    expect(result.frames[0].angle_right).toBeCloseTo(60, 3);
+  });
 });

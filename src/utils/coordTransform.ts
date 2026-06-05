@@ -23,8 +23,8 @@ const AXIS_X = new Vector3(1, 0, 0);
 const AXIS_Y = new Vector3(0, 1, 0);
 const SENSOR_TO_THREE_QUATERNION = new Quaternion().setFromAxisAngle(AXIS_X, -Math.PI / 2);
 const SENSOR_TO_THREE_QUATERNION_INV = SENSOR_TO_THREE_QUATERNION.clone().invert();
-const LEFT_OAR_FIXED_ROTATION = new Euler(Math.PI, 0, Math.PI, "XYZ");
-const RIGHT_OAR_FIXED_ROTATION = new Euler(-Math.PI, 0, Math.PI, "XYZ");
+const LEFT_OAR_FIXED_ROTATION = new Euler(Math.PI, 0, Math.PI - 4 * Math.PI / 18, "XYZ");
+const RIGHT_OAR_FIXED_ROTATION = new Euler(-Math.PI, 0, Math.PI - 3 * Math.PI / 18, "XYZ");
 
 
 export type OarSide = "left" | "right";
