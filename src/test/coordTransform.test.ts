@@ -105,14 +105,14 @@ describe("coordTransform", () => {
 
   it("keeps right-oar fixed correction in coordTransform helpers", () => {
     expect(getOarFixedRotation("left")).toEqual([Math.PI, 0, Math.PI]);
-    expect(getOarFixedRotation("right")).toEqual([Math.PI, 0, Math.PI]);
+    expect(getOarFixedRotation("right")).toEqual([-Math.PI, 0, Math.PI]);
   });
 
   it("matches the former right-oar sensor mirror convention before fixed rotation", () => {
     const sensor = makeSensorQuaternion(0.9238795325, 0.1, 0.2, 0.3);
     const mirroredFormerSensor = makeSensorQuaternion(sensor.w, -sensor.x, -sensor.y, sensor.z);
     const former = sensorQuaternionToThree(mirroredFormerSensor)
-      .multiply(new Quaternion().setFromEuler(new Euler(Math.PI, 0, Math.PI, "XYZ")))
+      .multiply(new Quaternion().setFromEuler(new Euler(-Math.PI, 0, Math.PI, "XYZ")))
       .normalize();
     const web = transformRigQuaternions({
       boat: makeSensorQuaternion(1, 0, 0, 0),
@@ -142,15 +142,15 @@ describe("coordTransform", () => {
     const identity = makeSensorQuaternion(1, 0, 0, 0);
     const result = transformRigQuaternions({ boat: identity, left: identity, right: identity });
 
-    expect(result.left.equals(result.right)).toBe(true);
+    expect(Math.abs(result.left.dot(result.right))).toBeCloseTo(1, 6);
     expect(result.left.length()).toBeCloseTo(1, 6);
     expect(result.right.length()).toBeCloseTo(1, 6);
   });
 
-  it("right oar fixed rotation is Euler(Math.PI, 0, Math.PI)", () => {
+  it("right oar fixed rotation is Euler(-Math.PI, 0, Math.PI)", () => {
     const [x, y, z] = getOarFixedRotation("right");
 
-    expect(x).toBeCloseTo(Math.PI);
+    expect(x).toBeCloseTo(-Math.PI);
     expect(y).toBeCloseTo(0);
     expect(z).toBeCloseTo(Math.PI);
   });

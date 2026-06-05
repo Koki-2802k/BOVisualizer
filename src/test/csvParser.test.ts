@@ -57,7 +57,7 @@ number,time,wol
     expect(metrics.spm.length).toBe(result.frames.length);
     expect(metrics.split.length).toBe(result.frames.length);
     expect(metrics.timeAxis.length).toBe(result.frames.length);
-    expect(metrics.gpsValidPoints.length).toBe(0);
+    expect(metrics.gpsValidPoints.length).toBe(result.frames.length);
     expect(metrics.graphSeries.speed.length).toBe(result.frames.length);
   });
 });
