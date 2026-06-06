@@ -34,7 +34,6 @@ function App() {
     oarSide,
     setOarSide,
     playOnSwitch,
-    strokes,
     analysisMode,
     showStrokePhases,
     showStrokeMetrics,
@@ -60,6 +59,7 @@ function App() {
 
   const {
     frames,
+    strokes,
     metrics,
     allDatasetsData,
     hasAnyStrokes,

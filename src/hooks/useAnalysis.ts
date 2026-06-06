@@ -5,11 +5,12 @@ import { deriveMetrics } from '../utils/metrics';
 import { getAnalysis } from '../domain/analysisRepository';
 import { loadAllManifestDatasets } from '../data/datasetLoader';
 import type { RowingFrame, DerivedMetrics } from '../types/rowing';
+import type { StrokeSegment } from '../types/strokeDetect';
 import type { DatasetStrokeData } from '../components/StrokeMetricsTable';
 
 export interface UseAnalysisResult {
   frames: RowingFrame[];
-  strokes: any[]; // StrokeSegment[]
+  strokes: StrokeSegment[];
   metrics: DerivedMetrics | null;
   allDatasetsData: DatasetStrokeData[] | undefined;
   hasAnyStrokes: boolean;
@@ -21,8 +22,6 @@ export function useAnalysis(datasetState: any): UseAnalysisResult {
   const {
     customDatasets,
     datasets,
-    strokes,
-    setStrokes,
     setMaxFrame,
   } = usePlaybackStore();
 
@@ -30,22 +29,18 @@ export function useAnalysis(datasetState: any): UseAnalysisResult {
     return datasetState.dataset?.frames ?? [];
   }, [datasetState.dataset]);
 
-  // Sync maxFrame to store when frames length changes
+  // maxFrame をストアに同期（再生クランプに使用）
   useEffect(() => {
     setMaxFrame(Math.max(frames.length - 1, 0));
   }, [frames.length, setMaxFrame]);
 
-  // Sync strokes to store when frames change
-  useEffect(() => {
-    if (frames.length < 10) {
-      setStrokes([]);
-      return;
-    }
-    const detected = detectStrokes(frames);
-    setStrokes(detected);
-  }, [frames, setStrokes]);
+  // strokes はストアに持たせず、frames から直接導出する（Step 4 の核心）
+  const strokes = useMemo<StrokeSegment[]>(() => {
+    if (frames.length < 10) return [];
+    return detectStrokes(frames);
+  }, [frames]);
 
-  // Load manifest frames asynchronously for horizontal analysis
+  // 横断分析用にマニフェストの全フレームを非同期ロード
   const [allManifestFrames, setAllManifestFrames] = useState<
     Array<{ id: string; label: string; frames: RowingFrame[] }>
   >([]);
@@ -54,7 +49,7 @@ export function useAnalysis(datasetState: any): UseAnalysisResult {
     const manifest = datasetState.manifest;
     if (manifest.length === 0) return;
 
-    // Skip async manifest load if using custom datasets
+    // カスタムデータセット使用中はマニフェスト非同期ロードをスキップ
     if (Object.keys(customDatasets).length > 0) {
       setAllManifestFrames([]);
       return;
@@ -69,7 +64,7 @@ export function useAnalysis(datasetState: any): UseAnalysisResult {
           setAllManifestFrames(results);
         }
       } catch {
-        // ignore load failures
+        // 読み込み失敗は無視
       }
     }
 
@@ -79,7 +74,7 @@ export function useAnalysis(datasetState: any): UseAnalysisResult {
     };
   }, [datasetState.manifest, customDatasets]);
 
-  // Compile allDatasetsData
+  // 全データセット横断データを集計
   const allDatasetsData = useMemo<DatasetStrokeData[] | undefined>(() => {
     const customEntries = Object.entries(customDatasets);
 
@@ -127,7 +122,11 @@ export function useAnalysis(datasetState: any): UseAnalysisResult {
     [activeDataset],
   );
 
-  const error = datasetState.error || (datasets.length === 0 ? '表示できるデータセットがありません。フォルダを選択するか、ファイルを確認してください。' : null);
+  const error =
+    datasetState.error ||
+    (datasets.length === 0
+      ? '表示できるデータセットがありません。フォルダを選択するか、ファイルを確認してください。'
+      : null);
   const loading = datasetState.loading;
 
   return {
