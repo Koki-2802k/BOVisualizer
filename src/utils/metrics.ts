@@ -23,13 +23,15 @@ const buildMetricSeries = (frames: NormalizedFrame[], key: MetricKey): MetricSer
 
 const buildTimeAxis = (frames: NormalizedFrame[]): TimePoint[] => {
   let startMs: number | null = null;
+  // time_s が 0 始まりでないデータに対応するため、先頭フレームの値を引いて正規化する
+  const startSec = frames[0]?.timeSec ?? null;
 
   return frames.map((frame, index) => {
     // time_s (経過秒) を優先
     if (frame.timeSec !== null) {
       return {
         frameNumber: frame.csvNumber ?? index,
-        elapsedSeconds: frame.timeSec,
+        elapsedSeconds: startSec !== null ? frame.timeSec - startSec : frame.timeSec,
       };
     }
 

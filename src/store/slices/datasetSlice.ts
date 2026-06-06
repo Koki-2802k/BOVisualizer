@@ -9,6 +9,8 @@
  */
 import type { StateCreator } from 'zustand';
 import type { DatasetCsv, DatasetManifestItem } from '../../types/rowing';
+import type { PlaybackSlice } from './playbackSlice';
+import type { ViewSlice } from './viewSlice';
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
@@ -35,16 +37,9 @@ export type DatasetSlice = {
   setAutoReloadInterval: (interval: number) => void;
 };
 
-/** get() で取得する他スライスの状態（型安全のため最小限を定義） */
-type CrossSliceState = {
-  seekFrame: number;
-  isPlaying: boolean;
-  oarSide: 'right' | 'left';
-  graphMode: string;
-  initialOarSide: 'right' | 'left';
-  initialGraphMode: string;
-  playOnSwitch: boolean;
-};
+/** get() で取得する他スライスの状態（実際のスライス型から Pick して型安全を保証） */
+type CrossSliceState = Pick<PlaybackSlice, 'seekFrame' | 'isPlaying'> &
+  Pick<ViewSlice, 'oarSide' | 'graphMode' | 'initialOarSide' | 'initialGraphMode' | 'playOnSwitch'>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const createDatasetSlice: StateCreator<any, [], [], DatasetSlice> = (set, get) => ({
