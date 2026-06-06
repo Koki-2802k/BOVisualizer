@@ -660,18 +660,14 @@ export default function TimeSeriesChart({
   if (frames.length === 0 || points.length === 0) {
     return (
       <div className="panel-empty" style={{ flexDirection: "column", gap: "8px" }}>
-        <h3 style={{ margin: 0, fontSize: "22px", fontWeight: 600 }}>時系列グラフ</h3>
         <p style={{ margin: 0, fontSize: "22px" }}>時系列データがありません。</p>
       </div>
     );
   }
 
   return (
-    <>
-      <h3 style={{ margin: "0 0 4px", fontSize: "16px", flexShrink: 0 }}>時系列グラフ</h3>
-      <div ref={wrapperRef} style={{ width: "100%", flex: 1, minHeight: 0, position: "relative" }}>
-        <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
-      </div>
-    </>
+    <div ref={wrapperRef} style={{ width: "100%", flex: 1, minHeight: 0, position: "relative" }}>
+      <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
+    </div>
   );
 }

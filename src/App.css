@@ -546,3 +546,44 @@
     height: 20px;
   }
 }
+
+/* ----------------------------------------------------
+   時系列グラフ・メトリクスタブ切り替えボタン
+   ---------------------------------------------------- */
+.timeseries-tab-btn {
+  padding: 6px 14px;
+  /* 透明ボーダーを設定してアクティブ時のレイアウトシフトを防ぐ */
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background: transparent;
+  color: #64748b;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  transition: border-color 0.15s ease, color 0.15s ease;
+  position: relative;
+  margin-bottom: -1.5px; /* 親の border-bottom としっかり重ねる */
+  z-index: 1; /* 親の境界線より上に重ねるベース */
+}
+
+.timeseries-tab-btn:hover {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.04);
+}
+
+/* 選択中タブ: 下辺を削除して下の横線とつなげ、線の色も統一 */
+.timeseries-tab-btn.active {
+  background: #ffffff; /* 親のボーダーを隠すために白背景にする */
+  color: #0f172a;
+  border-color: #cbd5e1; /* タブの下にある横線 (#cbd5e1) と同じ色に統一 */
+  border-bottom: 2px solid #ffffff; /* 下辺を背景色と同じ白にして消し、親の線を隠す */
+  z-index: 2; /* 親の border-bottom より前面に描画させて横線を消す */
+}
+
+.timeseries-tab-btn.active:hover {
+  background: #ffffff;
+}

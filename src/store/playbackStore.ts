@@ -22,6 +22,7 @@ type PlaybackState = {
   strokes: StrokeSegment[];
   analysisMode: boolean;
   showStrokePhases: boolean;
+  showStrokeMetrics: boolean;
   setDatasets: (datasets: DatasetManifestItem[]) => void;
   setSelectedDatasetId: (datasetId: string) => void;
   setIsPlaying: (isPlaying: boolean) => void;
@@ -41,6 +42,7 @@ type PlaybackState = {
   setStrokes: (strokes: StrokeSegment[]) => void;
   setAnalysisMode: (enabled: boolean) => void;
   setShowStrokePhases: (show: boolean) => void;
+  setShowStrokeMetrics: (show: boolean) => void;
 };
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
@@ -72,6 +74,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
   strokes: [],
   analysisMode: true,
   showStrokePhases: true,
+  showStrokeMetrics: true,
   setInitialOarSide: (initialOarSide) => set({ initialOarSide }),
   setInitialGraphMode: (initialGraphMode) => set({ initialGraphMode }),
   setOarSide: (oarSide) => set({ oarSide }),
@@ -171,4 +174,5 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
   setStrokes: (strokes) => set({ strokes }),
   setAnalysisMode: (analysisMode) => set({ analysisMode }),
   setShowStrokePhases: (showStrokePhases) => set({ showStrokePhases }),
+  setShowStrokeMetrics: (showStrokeMetrics) => set({ showStrokeMetrics }),
 }));

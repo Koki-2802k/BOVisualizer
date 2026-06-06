@@ -328,7 +328,7 @@ const drawCanvas = (
 };
 
 export default function OarTrajectoryChart({ frames, currentIndex }: Props) {
-  const { oarSide, setOarSide } = usePlaybackStore();
+  const { oarSide } = usePlaybackStore();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasSizeRef = useRef<CanvasSize>({ w: 0, h: 0 });
@@ -445,37 +445,12 @@ export default function OarTrajectoryChart({ frames, currentIndex }: Props) {
   }
 
   return (
-    <>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "0 0 4px", flexShrink: 0 }}>
-        <h3 style={{ margin: 0, fontSize: "16px" }}>オール軌跡 (cm)</h3>
-        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "13px", fontWeight: 600 }}>
-
-          <select
-            value={oarSide}
-            onChange={(event) => setOarSide(event.target.value as OarSide)}
-            style={{
-              fontSize: "16px",
-              minHeight: 30,
-              padding: "2px 8px",
-              borderRadius: "6px",
-              border: "1px solid #94a3b8",
-              backgroundColor: "#ffffff",
-              fontFamily: "inherit",
-              color: "#0f172a"
-            }}
-          >
-            <option value="left">左オール</option>
-            <option value="right">右オール</option>
-          </select>
-        </label>
-      </div>
-      <div ref={wrapperRef} style={{ width: "100%", flex: 1, minHeight: 0 }}>
-        <canvas
-          ref={canvasRef}
-          aria-label={`${oarSide === "right" ? "右オール" : "左オール"}の軌跡キャンバス`}
-          style={{ width: "100%", height: "100%", display: "block" }}
-        />
-      </div>
-    </>
+    <div ref={wrapperRef} style={{ width: "100%", flex: 1, minHeight: 0 }}>
+      <canvas
+        ref={canvasRef}
+        aria-label={`${oarSide === "right" ? "右オール" : "左オール"}の軌跡キャンバス`}
+        style={{ width: "100%", height: "100%", display: "block" }}
+      />
+    </div>
   );
 }

@@ -236,7 +236,7 @@ export default function Scene({ frames, frameIndex }: SceneProps) {
   }
 
   return (
-    <div style={{ width: "100%", height: "100%", minHeight: 0 }}>
+    <div style={{ width: "100%", height: "100%", minHeight: 0, borderRadius: "8px", overflow: "hidden" }}>
       <Canvas camera={{ position: [3, 2, 4], fov: 45 }}>
         <color attach="background" args={["#dceeff"]} />
         <ambientLight intensity={0.7} />

@@ -57,6 +57,8 @@ type PlaybackControlsProps = {
   onAnalysisModeChange?: (enabled: boolean) => void;
   showStrokePhases?: boolean;
   onShowStrokePhasesChange?: (show: boolean) => void;
+  showStrokeMetrics?: boolean;
+  onShowStrokeMetricsChange?: (show: boolean) => void;
 };
 
 export default function PlaybackControls({
@@ -91,6 +93,8 @@ export default function PlaybackControls({
   onAnalysisModeChange,
   showStrokePhases = true,
   onShowStrokePhasesChange,
+  showStrokeMetrics = true,
+  onShowStrokeMetricsChange,
 }: PlaybackControlsProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -500,6 +504,16 @@ export default function PlaybackControls({
                     style={{ width: '26px', height: '26px', cursor: 'pointer', margin: 0 }}
                   />
                   <span style={{ userSelect: 'none' }}>ストローク分割</span>
+                </label>
+
+                <label className="option-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', cursor: 'pointer', color: '#e2e8f0', fontSize: '20px', margin: '8px 0', minWidth: 'auto', fontWeight: 500 }}>
+                  <input
+                    type="checkbox"
+                    checked={showStrokeMetrics}
+                    onChange={(e) => onShowStrokeMetricsChange?.(e.target.checked)}
+                    style={{ width: '26px', height: '26px', cursor: 'pointer', margin: 0 }}
+                  />
+                  <span style={{ userSelect: 'none' }}>ストロークメトリクス</span>
                 </label>
               </div>
             )}
