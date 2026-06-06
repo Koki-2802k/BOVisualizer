@@ -5,6 +5,7 @@ import { useAnimationClock } from './hooks/useAnimationClock';
 import { useDataset } from './hooks/useDataset';
 import { usePlaybackStore } from './store/playbackStore';
 import { deriveMetrics } from './utils/metrics';
+import { detectStrokes, seekByPhase } from './utils/strokeDetect';
 import './App.css';
 import './index.css';
 
@@ -29,6 +30,8 @@ function App() {
     initialOarSide,
     initialGraphMode,
     playOnSwitch,
+    strokes,
+    analysisMode,
     setDatasets,
     setSelectedDatasetId,
     setIsPlaying,
@@ -43,6 +46,8 @@ function App() {
     setInitialOarSide,
     setInitialGraphMode,
     setPlayOnSwitch,
+    setStrokes,
+    setAnalysisMode,
   } = usePlaybackStore();
 
   const datasetState = useDataset(selectedDatasetId);
@@ -66,6 +71,16 @@ function App() {
     setMaxFrame(Math.max(frames.length - 1, 0));
   }, [frames.length, setMaxFrame]);
 
+  // frames が変わるたびにストロークを再検出する
+  useEffect(() => {
+    if (frames.length < 10) {
+      setStrokes([]);
+      return;
+    }
+    const detected = detectStrokes(frames);
+    setStrokes(detected);
+  }, [frames, setStrokes]);
+
   const { uiFrame } = useAnimationClock({
     frameCount: frames.length,
     fps,
@@ -87,6 +102,20 @@ function App() {
       if (event.code === 'Space') {
         event.preventDefault();
         setIsPlaying(!isPlaying);
+      }
+
+      // Shift + ← / → : 前後の位相へシーク
+      if (event.shiftKey && event.code === 'ArrowRight') {
+        event.preventDefault();
+        const nextFrame = seekByPhase(strokes, uiFrame, +1);
+        setSeekFrame(nextFrame);
+        return;
+      }
+      if (event.shiftKey && event.code === 'ArrowLeft') {
+        event.preventDefault();
+        const nextFrame = seekByPhase(strokes, uiFrame, -1);
+        setSeekFrame(nextFrame);
+        return;
       }
 
       if (event.code === 'ArrowRight') {
@@ -122,7 +151,7 @@ function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isPlaying, setIsPlaying, datasets, selectedDatasetId, setSelectedDatasetId]);
+  }, [isPlaying, setIsPlaying, datasets, selectedDatasetId, setSelectedDatasetId, strokes, uiFrame, setSeekFrame]);
 
   const currentFrame = frames[uiFrame] ?? null;
   
@@ -166,6 +195,9 @@ function App() {
         onInitialGraphModeChange={setInitialGraphMode}
         playOnSwitch={playOnSwitch}
         onPlayOnSwitchChange={setPlayOnSwitch}
+        analysisMode={analysisMode}
+        strokeCount={strokes.length}
+        onAnalysisModeChange={setAnalysisMode}
       />
       <div className="dashboard-area">
         {error ? (
@@ -206,7 +238,13 @@ function App() {
           <section className="panel timeseries-wrapper" aria-label="時系列グラフ">
             <ErrorBoundary fallbackTitle="時系列表示エラー">
               <Suspense fallback={<div className="panel overlay-message loading">時系列グラフを読み込み中...</div>}>
-                <TimeSeriesChart frames={frames} currentIndex={uiFrame} mode={graphMode} />
+                <TimeSeriesChart
+                  frames={frames}
+                  currentIndex={uiFrame}
+                  mode={graphMode}
+                  strokes={strokes}
+                  analysisMode={analysisMode}
+                />
               </Suspense>
             </ErrorBoundary>
           </section>

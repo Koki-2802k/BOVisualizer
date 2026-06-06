@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import type { RowingFrame } from "../types/rowing";
+import type { StrokeSegment } from "../types/strokeDetect";
 
 export type GraphMode = "acceleration" | "gyro" | "speed";
 
@@ -7,6 +8,10 @@ type Props = {
   frames: RowingFrame[];
   currentIndex: number;
   mode: GraphMode;
+  /** 検出済みストロークセグメント一覧（解析モード時に使用） */
+  strokes?: StrokeSegment[];
+  /** 解析モード有効時に位相帯・凡例を表示する */
+  analysisMode?: boolean;
 };
 
 type CanvasBox = {
@@ -196,6 +201,28 @@ const drawPolyline = (
   });
 };
 
+// 位相色定義
+const PHASE_COLORS: Record<string, string> = {
+  catch: 'rgba(59,130,246,0.12)',
+  drive: 'rgba(34,197,94,0.12)',
+  finish: 'rgba(249,115,22,0.12)',
+  recovery: 'rgba(148,163,184,0.10)',
+};
+
+const PHASE_LABELS: Record<string, string> = {
+  catch: 'キャッチ',
+  drive: 'ドライブ',
+  finish: 'フィニッシュ',
+  recovery: 'リカバリー',
+};
+
+const PHASE_BORDER_COLORS: Record<string, string> = {
+  catch: 'rgba(59,130,246,0.35)',
+  drive: 'rgba(34,197,94,0.35)',
+  finish: 'rgba(249,115,22,0.35)',
+  recovery: 'rgba(148,163,184,0.30)',
+};
+
 const drawTimeSeriesCanvas = (
   canvas: HTMLCanvasElement,
   box: CanvasBox,
@@ -203,6 +230,8 @@ const drawTimeSeriesCanvas = (
   currentIndex: number,
   mode: GraphMode,
   yDomain: [number, number],
+  strokes: StrokeSegment[] = [],
+  analysisMode: boolean = false,
 ) => {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) {
@@ -272,6 +301,36 @@ const drawTimeSeriesCanvas = (
   ctx.setLineDash([]);
   ctx.restore();
 
+  // 位相帯描画（解析モード時のみ） ← グリッドの直後、軸線・折れ線より前に描画して解析要素を下層に置く
+  if (analysisMode && strokes.length > 0) {
+    strokes.forEach((stroke) => {
+      stroke.phases.forEach((seg) => {
+        const startPt = points[Math.min(seg.startFrame, points.length - 1)];
+        const endPt = points[Math.min(seg.endFrame, points.length - 1)];
+        if (!startPt || !endPt) return;
+
+        const x1 = PADDING.left + ((startPt.time - minTime) / timeSpan) * plotWidth;
+        const x2 = PADDING.left + ((endPt.time - minTime) / timeSpan) * plotWidth;
+        const bandWidth = Math.max(1, x2 - x1);
+
+        ctx.save();
+        ctx.fillStyle = PHASE_COLORS[seg.phase] ?? 'rgba(128,128,128,0.08)';
+        ctx.fillRect(x1, PADDING.top, bandWidth, plotHeight);
+        ctx.restore();
+
+        ctx.save();
+        ctx.strokeStyle = PHASE_BORDER_COLORS[seg.phase] ?? 'rgba(128,128,128,0.25)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(x1, PADDING.top);
+        ctx.lineTo(x1, PADDING.top + plotHeight);
+        ctx.stroke();
+        ctx.restore();
+      });
+    });
+  }
+
   ctx.save();
   ctx.strokeStyle = LINE_COLORS.axis;
   ctx.lineWidth = 1.25;
@@ -286,6 +345,8 @@ const drawTimeSeriesCanvas = (
   ctx.restore();
 
   drawPolyline(ctx, points, mode, worldToCanvas);
+
+  // 位相帯描画（解析モード時のみ、折れ線の下層に描画） ← 展開済みの重複ブロックは削除
 
   const safeIndex = Math.max(0, Math.min(currentIndex, points.length - 1));
   const currentPoint = points[safeIndex];
@@ -364,6 +425,38 @@ const drawTimeSeriesCanvas = (
     });
   }
 
+  // 位相凡例（解析モード時のみ、右上に小さく表示）
+  if (analysisMode && strokes.length > 0) {
+    const phaseOrder: Array<keyof typeof PHASE_COLORS> = ['catch', 'drive', 'finish', 'recovery'];
+    const legendItemH = 18;
+    const legendPadX = 10;
+    const legendPadY = 6;
+    // gyro 凡例の下に配置するため、gyro モードのときは少し下にずらす
+    const baseY = mode === 'gyro' ? PADDING.top + 80 : PADDING.top + 12;
+
+    phaseOrder.forEach((phase, idx) => {
+      const iy = baseY + idx * legendItemH + legendPadY;
+      const ix = box.width - PADDING.right - 96 - legendPadX;
+
+      // 色帯プレビュー
+      ctx.save();
+      ctx.fillStyle = PHASE_COLORS[phase] ?? 'rgba(128,128,128,0.12)';
+      ctx.strokeStyle = PHASE_BORDER_COLORS[phase] ?? 'rgba(128,128,128,0.3)';
+      ctx.lineWidth = 1;
+      ctx.fillRect(ix, iy - 7, 14, 12);
+      ctx.strokeRect(ix, iy - 7, 14, 12);
+      ctx.restore();
+
+      drawText(ctx, PHASE_LABELS[phase] ?? phase, ix + 18, iy, {
+        align: 'left',
+        baseline: 'middle',
+        size: 12,
+        bold: false,
+        color: LINE_COLORS.label,
+      });
+    });
+  }
+
   drawText(ctx, "Time (s)", PADDING.left + plotWidth / 2, box.height - 6, {
     align: "center",
     baseline: "bottom",
@@ -373,7 +466,7 @@ const drawTimeSeriesCanvas = (
   });
 };
 
-export default function TimeSeriesChart({ frames, currentIndex, mode }: Props) {
+export default function TimeSeriesChart({ frames, currentIndex, mode, strokes = [], analysisMode = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasSizeRef = useRef<CanvasSize>({ w: 0, h: 0 });
@@ -386,12 +479,16 @@ export default function TimeSeriesChart({ frames, currentIndex, mode }: Props) {
     safeIndex,
     mode,
     yDomain,
+    strokes,
+    analysisMode,
   });
   latestRenderStateRef.current = {
     points,
     safeIndex,
     mode,
     yDomain,
+    strokes,
+    analysisMode,
   };
 
   const cancelScheduledDraw = () => {
@@ -422,9 +519,9 @@ export default function TimeSeriesChart({ frames, currentIndex, mode }: Props) {
       return;
     }
 
-    const { points: latestPoints, safeIndex: latestSafeIndex, mode: latestMode, yDomain: latestYDomain } = latestRenderStateRef.current;
+    const { points: latestPoints, safeIndex: latestSafeIndex, mode: latestMode, yDomain: latestYDomain, strokes: latestStrokes, analysisMode: latestAnalysisMode } = latestRenderStateRef.current;
     resizeCanvas(canvas, box, canvasSizeRef);
-    drawTimeSeriesCanvas(canvas, box, latestPoints, latestSafeIndex, latestMode, latestYDomain);
+    drawTimeSeriesCanvas(canvas, box, latestPoints, latestSafeIndex, latestMode, latestYDomain, latestStrokes, latestAnalysisMode);
   };
 
   useEffect(() => {
@@ -465,8 +562,8 @@ export default function TimeSeriesChart({ frames, currentIndex, mode }: Props) {
     }
 
     resizeCanvas(canvas, box, canvasSizeRef);
-    drawTimeSeriesCanvas(canvas, box, points, safeIndex, mode, yDomain);
-  }, [points, safeIndex, mode, yDomain]);
+    drawTimeSeriesCanvas(canvas, box, points, safeIndex, mode, yDomain, strokes, analysisMode);
+  }, [points, safeIndex, mode, yDomain, strokes, analysisMode]);
 
   if (frames.length === 0 || points.length === 0) {
     return (

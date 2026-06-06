@@ -50,6 +50,11 @@ type PlaybackControlsProps = {
   onInitialGraphModeChange?: (mode: GraphMode) => void;
   playOnSwitch?: boolean;
   onPlayOnSwitchChange?: (play: boolean) => void;
+  /** 解析モード（位相帯表示）のオン/オフ */
+  analysisMode?: boolean;
+  /** 検出済みストローク数（トグルボタンのバッジ表示と無効化制御用） */
+  strokeCount?: number;
+  onAnalysisModeChange?: (enabled: boolean) => void;
 };
 
 export default function PlaybackControls({
@@ -79,6 +84,9 @@ export default function PlaybackControls({
   onInitialGraphModeChange,
   playOnSwitch = false,
   onPlayOnSwitchChange,
+  analysisMode = false,
+  strokeCount = 0,
+  onAnalysisModeChange,
 }: PlaybackControlsProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -508,6 +516,29 @@ export default function PlaybackControls({
         title="フォルダ内を再読み込み"
       >
         <img src={`${import.meta.env.BASE_URL}RELOAD.png`} alt="再読み込み" className={isSpinning ? 'spinning' : ''} />
+      </button>
+
+      <button
+        id="analysis-mode-toggle"
+        type="button"
+        onClick={() => onAnalysisModeChange?.(!analysisMode)}
+        disabled={strokeCount === 0}
+        title={strokeCount === 0 ? 'ストロークが検出されていません' : analysisMode ? '解析モードをオフにする' : '解析モードをオンにする（位相帯表示）'}
+        style={{
+          position: 'relative',
+          background: analysisMode
+            ? 'linear-gradient(135deg, rgba(34,197,94,0.25), rgba(59,130,246,0.25))'
+            : undefined,
+          borderColor: analysisMode ? 'rgba(34,197,94,0.6)' : undefined,
+          color: analysisMode ? '#86efac' : undefined,
+          opacity: strokeCount === 0 ? 0.45 : 1,
+          cursor: strokeCount === 0 ? 'not-allowed' : 'pointer',
+          fontSize: '18px',
+          padding: '4px 10px',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        🔬 解析{strokeCount > 0 ? ` (${strokeCount})` : ''}
       </button>
     </section>
   );
