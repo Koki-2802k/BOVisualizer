@@ -24,65 +24,58 @@
 
 ## 優先度サマリ
 
-| # | 機能 | 価値 | 実装難度 | 優先度 |
-| :-- | :--- | :--- | :--- | :--- |
-| 1 | ストローク自動分割・位相検出 | ★★★ | 中 | **最優先（基盤）** |
-| 2 | キャッチ／フィニッシュ角・ストローク長の自動算出 | ★★★ | 中 | 高 |
-| 3 | ストローク重ね合わせ（ゴースト比較） | ★★★ | 中 | 高 |
-| 4 | 左右対称性（バランス）分析 | ★★★ | 低〜中 | 高 |
-| 5 | 艇速の周期変動（チェック／ラン）解析 | ★★ | 中 | 中 |
-| 6 | セッション間／クルー間 比較ビュー | ★★ | 中 | 中 |
-| 7 | GPS トラックのメトリクス・ヒートマップ | ★★ | 低 | 中 |
-| 8 | ストローク・メトリクスのレポート出力 | ★★ | 低 | 中 |
-| 9 | ビデオ同期オーバーレイ | ★★★ | 高 | 中 |
-| 10 | リアルタイム・ストリーミング入力 | ★★★ | 高 | 将来 |
-| 11 | Python 解析エンジン由来メトリクスの移植 | ★★ | 中 | 要 PDF 確認 |
-| 12 | コーチ用アノテーション／タグ付け | ★ | 低 | 低 |
+| # | 機能 | 価値 | 実装難度 | 優先度 | 進捗 |
+| :-- | :--- | :--- | :--- | :--- | :--- |
+| 1 | ストローク自動分割・位相検出 | ★★★ | 中 | **最優先（基盤）** | ✅ **実装完了** |
+| 2 | キャッチ／フィニッシュ角・ストローク長の自動算出 | ★★★ | 中 | 高 | ✅ **実装完了** |
+| 3 | ストローク重ね合わせ（ゴースト比較） | ★★★ | 中 | 高 | 🔲 未実装 |
+| 4 | 左右対称性（バランス）分析 | ★★★ | 低〜中 | 高 | 🔲 未実装 |
+| 5 | 艇速の周期変動（チェック／ラン）解析 | ★★ | 中 | 中 | 🔲 未実装 |
+| 6 | セッション間／クルー間 比較ビュー | ★★ | 中 | 中 | 🔲 未実装 |
+| 7 | GPS トラックのメトリクス・ヒートマップ | ★★ | 低 | 中 | 🔲 未実装 |
+| 8 | ストローク・メトリクスのレポート出力 | ★★ | 低 | 中 | 🔲 未実装 |
+| 9 | ビデオ同期オーバーレイ | ★★★ | 高 | 中 | 🔲 未実装 |
+| 10 | リアルタイム・ストリーミング入力 | ★★★ | 高 | 将来 | 🔲 未実装 |
+| 11 | Python 解析エンジン由来メトリクスの移植 | ★★ | 中 | 要 PDF 確認 | 🔲 未実装 |
+| 12 | コーチ用アノテーション／タグ付け | ★ | 低 | 低 | 🔲 未実装 |
 
 ---
 
-## 1. ストローク自動分割・位相検出 ★最優先（基盤機能）
+## 1. ストローク自動分割・位相検出 ★最優先（基盤機能） ✅ 実装完了
 
 **概要**: オール角（クォータニオン由来の水平面角）またはジャイロ／加速度の周期から、1 ストロークを自動検出し、**キャッチ → ドライブ → フィニッシュ → リカバリー** の 4 位相に分割する。
 
 **価値**: 以降のほぼ全機能（2〜9）の前提となる土台。タイムラインに「ストローク番号」と「位相」を付与でき、シークバーを位相／ストローク単位でスナップ移動できる。
 
-### UI / 表示方針
+### 実装済み内容
 
-- **時系列グラフ横軸の 4 位相分割**: `TimeSeriesChart` の横軸（時間軸）を、検出した位相境界で区切り、**4 位相それぞれを薄い 4 色の背景帯**で塗り分ける。色は透明度を高めに（例: `rgba(...)` で alpha ≒ 0.08〜0.15）設定し、既存の折れ線・現在値バーの視認性を損なわないこと。Recharts の `ReferenceArea`（位相区間ごとに `x1`〜`x2` と `fill` / `fillOpacity` を指定）で実装する。
-  - 色割り当て案（薄め・互いに区別可能）:
-    - キャッチ: 薄い青 `rgba(59,130,246,0.12)`
-    - ドライブ: 薄い緑 `rgba(34,197,94,0.12)`
-    - フィニッシュ: 薄い橙 `rgba(249,115,22,0.12)`
-    - リカバリー: 薄い灰 `rgba(148,163,184,0.10)`
-  - 凡例に 4 位相の色対応を小さく添える。
-- **新規ウィンドウは追加しない**: 位相帯・ストローク番号などはすべて既存の `TimeSeriesChart` / `PlaybackControls` 上に重ねて表現する。表示が密になる要素は後述の「解析モード」トグルでオン/オフする（→ 末尾「全機能共通の UI 方針」参照）。
+- **軌跡Z軸（水深）基準のストローク自動検出**: [strokeDetect.ts](file:///home/koki/BOVisualizer/src/utils/strokeDetect.ts) / [domain/analyzers/](file:///home/koki/BOVisualizer/src/domain/analyzers/) にて、ブレードのZ座標が -30cm 以下を「水中」と判定。チャタリング除去処理後、4位相に分割。
+- **時系列グラフの位相背景色分け**: [TimeSeriesChart.tsx](file:///home/koki/BOVisualizer/src/components/TimeSeriesChart.tsx) に Recharts `ReferenceArea` で薄い4色（青・緑・橙・灰）を実装済み。
+- **位相単位のシークナビゲーション**: `Shift + ←` / `Shift + →` で前後の位相開始位置にスナップ移動。[PlaybackControls.tsx](file:///home/koki/BOVisualizer/src/components/PlaybackControls.tsx) に実装済み。
+- **ストローク・メトリクス表**: [StrokeMetricsTable.tsx](file:///home/koki/BOVisualizer/src/components/StrokeMetricsTable.tsx) にストローク毎の開始/終了フレーム、各位相フレーム範囲を表示。設定ポップオーバーでオン/オフ可能。
 
-### ショートカットキー
+### UI / 表示方針（参考）
 
-- `Shift + ←` / `Shift + →`: **前後の位相**（キャッチ→ドライブ→…）へ移動。
-- 既存の `←` / `→`（データセット切替）、`Space`（再生/停止）はそのまま維持し、`Shift` 併用で位相送りに割り当てる。
-- （任意）ストローク単位送りが必要なら別途検討するが、`[` `]` は使わない。
-
-
-
-**実装方針**:
-- `utils/` に純粋関数 `detectStrokes(frames)` を追加（ピーク検出 / ゼロクロス）。SPM があれば周期の初期推定に利用。
-- 既存の Zustand ストアに `strokes: StrokeSegment[]`（start/end フレーム、4 位相の境界フレーム）を保持し、現在フレームから現在位相を導出するセレクタを用意。
-- `TimeSeriesChart` に `ReferenceArea` ベースの位相帯描画を追加。`PlaybackControls`（またはグローバルキーハンドラ）に `Shift + ←/→` の位相送りを追加。
+- 色割り当て（薄め・互いに区別可能）:
+  - キャッチ: 薄い青 `rgba(59,130,246,0.12)`
+  - ドライブ: 薄い緑 `rgba(34,197,94,0.12)`
+  - フィニッシュ: 薄い橙 `rgba(249,115,22,0.12)`
+  - リカバリー: 薄い灰 `rgba(148,163,184,0.10)`
+- 新規ウィンドウは追加せず、既存コンポーネントに重ねて表現。「解析モード」トグルでオン/オフ（→ 末尾「全機能共通の UI 方針」参照）。
 
 ---
 
-## 2. キャッチ／フィニッシュ角・ストローク長の自動算出 ★高
+## 2. キャッチ／フィニッシュ角・ストローク長の自動算出 ★高 ✅ 実装完了
 
 **概要**: 各ストロークについてキャッチ角・フィニッシュ角・総スイープ角（アーク）・ドライブ／リカバリー比（リズム）を算出し、ストローク単位のメトリクス表として提示する。
 
 **価値**: ローイングで最重要の技術指標。「キャッチが浅い」「フィニッシュが抜けている」を **数値とトレンド** で可視化でき、感覚に頼らないコーチングが可能になる。
 
-**実装方針**:
-- 機能 1 のセグメントを入力に、オールの水平角の最小／最大からキャッチ／フィニッシュ角を算出。
-- 左右別に出し、`MetricsBar` を拡張するか新規 `StrokeMetricsTable` コンポーネントを追加。
-- ストロークごとの推移をスパークラインで併記。
+### 実装済み内容
+
+- **ストローク毎のキャッチ角・フィニッシュ角・総スイープ角（アーク）・リズム（水中/水上比）**: [StrokeMetricsTable.tsx](file:///home/koki/BOVisualizer/src/components/StrokeMetricsTable.tsx) / [metrics.ts](file:///home/koki/BOVisualizer/src/utils/metrics.ts) にて、機能1で検出したストロークセグメントを入力に、左右オールの水平角の最小・最大からキャッチ角・フィニッシュ角を算出。
+- **左右別メトリクス**: 左右オール各々のキャッチ角・フィニッシュ角・スイープ角を個別に集計し、`StrokeMetricsTable` に一覧表示。
+- **ダッシュボード統合**: `MetricsBar` 上にも現在フレームのオール角度をリアルタイム表示。設定ポップオーバーで表示テーブルのオン/オフ可能。
 
 ---
 
@@ -203,6 +196,129 @@
 **実装方針**:
 - アノテーションをストアに保持（フレーム/ストローク ID 紐付け）。シークバー上にマーカー表示。
 - localStorage または CSV 同梱でのエクスポート/インポート。
+
+---
+
+## 現在のコード構成と新規機能の拡張方針 (Code Structure & Extension Policy)
+
+> ⚠️ **重要**: 新規機能を実装する際は、つぎ足し開発による肥大化やパフォーマンス低下を防ぐため、**最適化済みの4層アーキテクチャ・レジストリ拡張ポイント・キャッシュ設計に必ず従ってください**。以下に定義する拡張ポイントを使用せず、View 層やストア層に直接ロジックを追加することは禁止です。
+
+### 最適化ステータス（2026-06-06 完了）
+
+全6ステップの最適化リファクタリングが完了しています。
+
+| ステップ | 内容 | 状態 |
+| :-- | :--- | :--- |
+| Step 1 | `domain/` レイヤー新設・解析リポジトリ（trajectory/stroke/metrics をキャッシュ集約） | ✅ 完了 |
+| Step 2 | `App.tsx` から計算を `useAnalysis` カスタムフックへ抽出 | ✅ 完了 |
+| Step 3 | データロードを `data/datasetLoader.ts` に集約・manifest/custom 分岐を統合 | ✅ 完了 |
+| Step 4 | ストアをスライス分割（playback/dataset/view）・`strokes` を導出値へ移行 | ✅ 完了 |
+| Step 5 | `NormalizedFrame` 型・列スキーマ（`METRIC_COLUMNS`）の一元化 | ✅ 完了 |
+| Step 6 | 解析アナライザー・パネルのレジストリ化（拡張ポイントの完成） | ✅ 完了 |
+
+### 1. レイヤー構造の定義
+
+```
+[表示層 View]       components/*   … props で受け取った結果を描画するだけ
+      ▲
+[状態層 Store]      store/slices/* … 再生・選択・UI設定など「状態」のみ保持
+      ▲
+[ドメイン層 Domain] domain/*       … trajectory/stroke/metrics の純粋計算 + レジストリ＋キャッシュ
+      ▲
+[データ層 Data]     data/*         … manifest/CSV/フォルダの読み込みを単一API化
+```
+
+* **データ層 (Data Layer)**: [datasetLoader.ts](file:///home/koki/BOVisualizer/src/data/datasetLoader.ts) / [useDataset.ts](file:///home/koki/BOVisualizer/src/hooks/useDataset.ts)
+  * CSV やマニフェストファイル等のフェッチおよびパース処理を一元管理。
+  * リモートデータ（サーバー）とローカルデータ（ディレクトリピッカー）のローディング・エラー状態を透過的に取得できる単一 API に集約済み。
+* **状態層 (Store Layer)**: [playbackStore.ts](file:///home/koki/BOVisualizer/src/store/playbackStore.ts)（3スライス合成）
+  * `playbackSlice.ts` … `isPlaying` / `fps` / `seekFrame` / `maxFrame`（再生制御のみ）
+  * `datasetSlice.ts` … `datasets` / `selectedDatasetId` / `customDatasets` / `directoryHandle`
+  * `viewSlice.ts` … `oarSide` / `graphMode` / `analysisMode` / `showStrokePhases` / `showStrokeMetrics` 等
+  * 重い算出値（軌跡・ストローク情報）はストアに保持させず、ドメイン・キャッシュ層へ委譲。
+* **ドメイン・キャッシュ層 (Domain/Cache Layer)**: [analysisRepository.ts](file:///home/koki/BOVisualizer/src/domain/analysisRepository.ts) / [useAnalysis.ts](file:///home/koki/BOVisualizer/src/hooks/useAnalysis.ts)
+  * 生フレーム配列を走査する重い計算（オールの3D軌跡・ストローク自動検出・時系列メトリクス加工など）を一元的に受け持ち、`Map` キャッシュで多重実行を防止。
+  * **アナライザーレジストリ** ([domain/analyzers/](file:///home/koki/BOVisualizer/src/domain/analyzers/)): 新しい解析は `ANALYZERS` 配列へ `Analyzer<T>` を1エントリ追加するだけで自動的に計算・キャッシュされる。
+  * **パネルレジストリ** ([domain/panels/](file:///home/koki/BOVisualizer/src/domain/panels/)): 新しい表示パネルは `PANELS` 配列へ `PanelDefinition` を1エントリ追加するだけでレイアウトに組み込まれる。
+  * 型付きスキーマ ([domain/schema.ts](file:///home/koki/BOVisualizer/src/domain/schema.ts)): `NormalizedFrame` / `METRIC_COLUMNS` / `MetricKey` を定義。新しい計測列は `METRIC_COLUMNS` の 1 行追加でグラフ・メトリクス導出に自動波及。
+* **表示層 (View Layer)**: 各コンポーネント ([App.tsx](file:///home/koki/BOVisualizer/src/App.tsx), [Scene.tsx](file:///home/koki/BOVisualizer/src/components/Scene.tsx), [RowingMap.tsx](file:///home/koki/BOVisualizer/src/components/RowingMap.tsx), [TimeSeriesChart.tsx](file:///home/koki/BOVisualizer/src/components/TimeSeriesChart.tsx), [OarTrajectoryChart.tsx](file:///home/koki/BOVisualizer/src/components/OarTrajectoryChart.tsx), [StrokeMetricsTable.tsx](file:///home/koki/BOVisualizer/src/components/StrokeMetricsTable.tsx))
+  * レンダリングに特化。表示に必要なデータは `useAnalysis` フックや props 経由で、計算済み（キャッシュ済み）の状態として受け取る。コンポーネント内で生 `frames` から再計算しない。
+
+### 2. 拡張ポイントを用いた新規機能の実装手順
+
+> **新規機能（機能 3〜12）の実装時には、以下の拡張ポイントを必ず使用してください。** View 層やストア層での生データループ処理・直接追記は禁止です。
+
+#### 拡張ポイント① — 新しい解析アルゴリズムの追加
+
+[domain/analyzers/](file:///home/koki/BOVisualizer/src/domain/analyzers/) に `Analyzer<T>` を実装し、`ANALYZERS` レジストリへ登録する。
+
+```ts
+// domain/analyzers/symmetryAnalyzer.ts の例（機能4: 左右対称性分析）
+import type { Analyzer, AnalysisInput } from './index';
+
+export interface SymmetryResult { /* ... */ }
+
+export const symmetryAnalyzer: Analyzer<SymmetryResult> = {
+  id: 'symmetry',
+  label: '左右対称性分析',
+  compute({ normalizedFrames, trajectory, strokes }: AnalysisInput): SymmetryResult {
+    // キャッシュ済みの trajectory / strokes を注入して再利用
+    // 自前で buildOarTrajectory や detectStrokes を呼ばない
+    return { /* ... */ };
+  },
+};
+
+// domain/analyzers/index.ts の ANALYZERS 配列に追加するだけで自動登録
+export const ANALYZERS = [strokeAnalyzer, metricsAnalyzer, symmetryAnalyzer /* ← 追加 */];
+```
+
+結果は `analysis.extra.get('symmetry')` として各コンポーネントから型付きで取得可能。
+
+#### 拡張ポイント② — 新しい表示パネルの追加
+
+[domain/panels/](file:///home/koki/BOVisualizer/src/domain/panels/) に `PanelDefinition` を追加し、`PANELS` レジストリへ登録する。
+
+```ts
+// domain/panels/index.ts の PANELS 配列に追加するだけで組み込まれる
+export const PANELS: PanelDefinition[] = [
+  { id: 'scene',     label: '3D',         component: () => import('../components/Scene') },
+  { id: 'trajectory',label: '軌跡',        component: () => import('../components/OarTrajectoryChart') },
+  // ... 既存パネル
+  { id: 'symmetry',  label: '左右対称性',  component: () => import('../components/SymmetryChart') }, // ← 追加例
+];
+```
+
+#### 拡張ポイント③ — 新しい計測列（グラフ系列）の追加
+
+[domain/schema.ts](file:///home/koki/BOVisualizer/src/domain/schema.ts) の `METRIC_COLUMNS` に列名を追加するだけで、時系列グラフ・メトリクス導出の両方に自動波及する。
+
+```ts
+// domain/schema.ts
+export const METRIC_COLUMNS = [
+  'speed','accx','accy','accz','gyrox','gyroy','gyroz',
+  'force_left', // ← 新しい計測列を1行追加するだけ
+] as const;
+```
+
+#### 拡張ポイント④ — 新しい状態の追加
+
+対応するスライスファイルのみを編集し、単一の `playbackStore.ts` を直接拡張しない。
+
+- **再生制御に関する状態**: `store/slices/playbackSlice.ts`
+- **データセット管理に関する状態**: `store/slices/datasetSlice.ts`
+- **表示・UI設定に関する状態**: `store/slices/viewSlice.ts`
+
+#### 拡張ポイント⑤ — キャッシュ済み算出値の再利用（注入型設計）
+
+新機能でオールの軌跡・ストローク分割位置が必要な場合は、`useAnalysis` フックが返す `analysis` オブジェクトから取得し、自前で計算しない。
+
+```ts
+// コンポーネント内での利用例
+const { analysis } = useAnalysis();
+const trajectory = analysis?.trajectory;   // キャッシュ済み軌跡
+const strokes    = analysis?.strokes;      // キャッシュ済みストローク
+const symmetry   = analysis?.extra.get('symmetry') as SymmetryResult | undefined;
+```
 
 ---
 
