@@ -21,39 +21,32 @@
  */
 
 import type { RowingFrame } from '../types/rowing';
+import type { NormalizedFrame } from '../domain/schema';
 import type { StrokePhase, PhaseSegment, StrokeSegment } from '../types/strokeDetect';
 import { buildOarTrajectoryInternal, type TrajectoryPoint } from './trajectory';
 import { getAnalysis } from '../domain/analysisRepository';
 
-/**
- * フレーム列からストロークセグメント列を検出して返す。
- */
-const toNum = (v: unknown): number | null => {
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
-  if (typeof v === 'string') {
-    const n = Number(v);
-    if (Number.isFinite(n)) return n;
-  }
-  return null;
-};
+// ─────────────────────────────────────────
+// FPS 推定（NormalizedFrame を使用）
+// ─────────────────────────────────────────
 
-function estimateFps(frames: RowingFrame[]): number {
+function estimateFps(frames: NormalizedFrame[]): number {
   const N = Math.min(frames.length - 1, 60);
   if (N < 2) return 30;
 
   // time_s (秒) を優先
-  const t0s = toNum(frames[0]?.['time_s']);
-  const tNs = toNum(frames[N]?.['time_s']);
-  if (t0s !== null && tNs !== null && tNs > t0s) {
+  const t0s = frames[0]?.timeSec;
+  const tNs = frames[N]?.timeSec;
+  if (t0s !== null && t0s !== undefined && tNs !== null && tNs !== undefined && tNs > t0s) {
     return N / (tNs - t0s);
   }
 
   // 文字列の time (ISO 日時 or ms)
-  const t0 = frames[0]?.['time'];
-  const tN = frames[N]?.['time'];
-  if (typeof t0 === 'string' && typeof tN === 'string') {
-    const ms0 = Date.parse(t0);
-    const msN = Date.parse(tN);
+  const t0str = frames[0]?.timeStr;
+  const tNstr = frames[N]?.timeStr;
+  if (t0str !== null && t0str !== undefined && tNstr !== null && tNstr !== undefined) {
+    const ms0 = Date.parse(t0str);
+    const msN = Date.parse(tNstr);
     if (!Number.isNaN(ms0) && !Number.isNaN(msN) && msN > ms0) {
       return (N * 1000) / (msN - ms0);
     }
@@ -62,6 +55,10 @@ function estimateFps(frames: RowingFrame[]): number {
   return 30;
 }
 
+// ─────────────────────────────────────────
+// 公開 API（RowingFrame[] インターフェース維持）
+// ─────────────────────────────────────────
+
 /**
  * フレーム列からストロークセグメント列を検出して返す。
  */
@@ -69,16 +66,20 @@ export function detectStrokes(frames: RowingFrame[]): StrokeSegment[] {
   return getAnalysis(frames).strokes;
 }
 
+// ─────────────────────────────────────────
+// 内部実装（NormalizedFrame[]）
+// ─────────────────────────────────────────
+
 /**
  * 内部で軌跡データを再構築せず、指定された軌跡データを用いてストローク検出を行う内部関数。
  */
-export function detectStrokesInternal(frames: RowingFrame[], trajectory?: TrajectoryPoint[]): StrokeSegment[] {
+export function detectStrokesInternal(frames: NormalizedFrame[], trajectory?: TrajectoryPoint[]): StrokeSegment[] {
   if (frames.length < 10) return [];
 
   const fps = estimateFps(frames);
 
   // 軌跡データを構築して Z 軸座標（水面クロス -30cm）を基にしたタイミングをスキャンする
-  const traj = trajectory || buildOarTrajectoryInternal(frames);
+  const traj = trajectory ?? buildOarTrajectoryInternal(frames);
   const N = traj.length;
 
   const isLeftIn = (tIdx: number) => {

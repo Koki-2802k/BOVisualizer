@@ -3,85 +3,91 @@ import type {
   DerivedMetrics,
   GpsPoint,
   MetricSeriesPoint,
-  RowingFrame,
   TimePoint,
 } from '../types/rowing';
+import type { NormalizedFrame, MetricKey } from '../domain/schema';
+import { METRIC_COLUMNS } from '../domain/schema';
 import { getAnalysis } from '../domain/analysisRepository';
 
-const numericValue = (frame: RowingFrame, key: string): number | null => {
-  const value = frame[key];
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
-};
+// ───────────────────────────────────────────────────────────────────────────
+// 内部ビルダー（NormalizedFrame を使用）
+// ───────────────────────────────────────────────────────────────────────────
 
-const buildMetricSeries = (frames: RowingFrame[], key: string): MetricSeriesPoint[] =>
+const buildMetricSeries = (frames: NormalizedFrame[], key: MetricKey): MetricSeriesPoint[] =>
   frames
     .map((frame) => ({
-      frameNumber: numericValue(frame, 'number') ?? 0,
-      value: numericValue(frame, key),
+      frameNumber: frame.csvNumber ?? frame.arrayIndex,
+      value: frame.metrics[key],
     }))
     .filter((point): point is MetricSeriesPoint => point.value !== null);
 
-const buildTimeAxis = (frames: RowingFrame[]): TimePoint[] => {
+const buildTimeAxis = (frames: NormalizedFrame[]): TimePoint[] => {
   let startMs: number | null = null;
 
   return frames.map((frame, index) => {
-    const raw = frame.time;
-    const nowMs = typeof raw === 'string' ? Date.parse(raw) : Number.NaN;
-
-    if (!Number.isNaN(nowMs) && startMs === null) {
-      startMs = nowMs;
+    // time_s (経過秒) を優先
+    if (frame.timeSec !== null) {
+      return {
+        frameNumber: frame.csvNumber ?? index,
+        elapsedSeconds: frame.timeSec,
+      };
     }
 
-    const elapsedSeconds = startMs !== null && !Number.isNaN(nowMs) ? (nowMs - startMs) / 1000 : index / 60;
+    // ISO 日時文字列から経過秒を計算
+    if (frame.timeStr !== null) {
+      const nowMs = Date.parse(frame.timeStr);
+      if (!Number.isNaN(nowMs)) {
+        if (startMs === null) startMs = nowMs;
+        return {
+          frameNumber: frame.csvNumber ?? index,
+          elapsedSeconds: (nowMs - startMs) / 1000,
+        };
+      }
+    }
 
+    // フォールバック: インデックス / 60fps
     return {
-      frameNumber: numericValue(frame, 'number') ?? index,
-      elapsedSeconds,
+      frameNumber: frame.csvNumber ?? index,
+      elapsedSeconds: index / 60,
     };
   });
 };
 
-const buildGpsValidPoints = (frames: RowingFrame[]): GpsPoint[] =>
+const buildGpsValidPoints = (frames: NormalizedFrame[]): GpsPoint[] =>
   frames
-    .map((frame, index) => {
-      const latitude = numericValue(frame, 'latitude');
-      const longitude = numericValue(frame, 'longitude');
-      if (latitude === null || longitude === null) {
-        return null;
-      }
-      if (latitude === 0 && longitude === 0) {
-        return null;
-      }
-      return {
-        // frameNumber はフレーム配列のインデックス（再生位置 uiFrame と一致させる）。
-        // CSVの 'number' 列は実測値で開始値が0でないため、再生位置と突き合わせると不一致になる。
-        frameNumber: index,
-        latitude,
-        longitude,
-      };
-    })
-    .filter((point): point is GpsPoint => point !== null);
+    .filter(
+      (frame): frame is NormalizedFrame & { gpsLat: number; gpsLon: number } =>
+        frame.gpsLat !== null && frame.gpsLon !== null,
+    )
+    .map((frame) => ({
+      // frameNumber はフレーム配列のインデックス（再生位置 uiFrame と一致させる）。
+      // CSV の 'number' 列は実測値で開始値が 0 でないため、再生位置と突き合わせると不一致になる。
+      frameNumber: frame.arrayIndex,
+      latitude: frame.gpsLat,
+      longitude: frame.gpsLon,
+    }));
 
+// ───────────────────────────────────────────────────────────────────────────
+// 公開 API
+// ───────────────────────────────────────────────────────────────────────────
+
+/** 公開ラッパー — 外部コンポーネントは DatasetCsv を渡す。 */
 export const deriveMetrics = (dataset: DatasetCsv): DerivedMetrics => {
   return getAnalysis(dataset.frames).metrics;
 };
 
-export const deriveMetricsInternal = (dataset: DatasetCsv): DerivedMetrics => {
-  const { frames } = dataset;
-
+/**
+ * 内部計算用。NormalizedFrame[] を直接受け取りメトリクスを導出する。
+ * graphSeries は METRIC_COLUMNS から自動生成されるため、列追加は schema.ts の 1 行のみ。
+ */
+export const deriveMetricsInternal = (frames: NormalizedFrame[]): DerivedMetrics => {
   return {
     spm: buildMetricSeries(frames, 'SPM'),
     split: buildMetricSeries(frames, 'SPLIT'),
     timeAxis: buildTimeAxis(frames),
     gpsValidPoints: buildGpsValidPoints(frames),
-    graphSeries: {
-      speed: buildMetricSeries(frames, 'speed'),
-      accx: buildMetricSeries(frames, 'accx'),
-      accy: buildMetricSeries(frames, 'accy'),
-      accz: buildMetricSeries(frames, 'accz'),
-      gyrox: buildMetricSeries(frames, 'gyrox'),
-      gyroy: buildMetricSeries(frames, 'gyroy'),
-      gyroz: buildMetricSeries(frames, 'gyroz'),
-    },
+    graphSeries: Object.fromEntries(
+      METRIC_COLUMNS.map((key) => [key, buildMetricSeries(frames, key)]),
+    ) as Record<string, MetricSeriesPoint[]>,
   };
 };
