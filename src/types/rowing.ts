@@ -47,29 +47,3 @@ export interface DerivedMetrics {
   gpsValidPoints: GpsPoint[];
   graphSeries: Record<string, MetricSeriesPoint[]>;
 }
-
-export interface StrokeSegment {
-  id: number;
-  startFrame: number;
-  endFrame: number;
-  catchFrame: number;
-  finishFrame: number;
-  entryFrame: number;
-  finishThresholdFrame: number;
-  exitFrame: number;
-}
-
-export interface OarStrokeMetrics {
-  catchAngle: number;
-  finishAngle: number;
-  sweepAngle: number;
-  drivePercent: number;
-}
-
-export interface StrokeMetrics {
-  strokeId: number;
-  left: OarStrokeMetrics | null;
-  right: OarStrokeMetrics | null;
-  catchFrame: number;
-}
-

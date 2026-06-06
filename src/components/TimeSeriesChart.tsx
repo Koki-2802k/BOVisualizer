@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, type RefObject } from "react";
-import type { RowingFrame, StrokeSegment } from "../types/rowing";
-import { usePlaybackStore } from "../store/playbackStore";
+import type { RowingFrame } from "../types/rowing";
 
 export type GraphMode = "acceleration" | "gyro" | "speed";
 
@@ -204,7 +203,6 @@ const drawTimeSeriesCanvas = (
   currentIndex: number,
   mode: GraphMode,
   yDomain: [number, number],
-  strokes: StrokeSegment[],
 ) => {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) {
@@ -229,50 +227,6 @@ const drawTimeSeriesCanvas = (
   const worldToCanvas = (time: number, value: number) => ({
     x: PADDING.left + ((time - minTime) / timeSpan) * plotWidth,
     y: PADDING.top + ((yDomain[1] - value) / ySpan) * plotHeight,
-  });
-
-  // Draw Phase Shading & Stroke Boundaries
-  strokes.forEach((stroke) => {
-    const tCatch = points[stroke.catchFrame]?.time;
-    const tEntry = points[stroke.entryFrame]?.time;
-    const tFT = points[stroke.finishThresholdFrame]?.time;
-    const tExit = points[stroke.exitFrame]?.time;
-    const tEnd = points[stroke.endFrame]?.time;
-
-    const drawSingleBand = (t1: number | undefined, t2: number | undefined, color: string) => {
-      if (t1 === undefined || t2 === undefined || t2 <= t1) return;
-      const { x: x1 } = worldToCanvas(t1, yDomain[0]);
-      const { x: x2 } = worldToCanvas(t2, yDomain[0]);
-      ctx.save();
-      ctx.fillStyle = color;
-      ctx.fillRect(x1, PADDING.top, x2 - x1, plotHeight);
-      ctx.restore();
-    };
-
-    drawSingleBand(tCatch, tEntry, "rgba(239, 68, 68, 0.08)");
-    drawSingleBand(tEntry, tFT, "rgba(59, 130, 246, 0.08)");
-    drawSingleBand(tFT, tExit, "rgba(168, 85, 247, 0.08)");
-    drawSingleBand(tExit, tEnd, "rgba(34, 197, 94, 0.08)");
-
-    if (tCatch !== undefined) {
-      const { x } = worldToCanvas(tCatch, yDomain[0]);
-      ctx.save();
-      ctx.strokeStyle = "rgba(15, 23, 42, 0.15)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x, PADDING.top);
-      ctx.lineTo(x, box.height - PADDING.bottom);
-      ctx.stroke();
-      ctx.restore();
-
-      drawText(ctx, `S${stroke.id}`, x + 4, PADDING.top + 4, {
-        align: "left",
-        baseline: "top",
-        size: 11,
-        bold: true,
-        color: "rgba(15, 23, 42, 0.45)",
-      });
-    }
   });
 
   const timeTickCount = 5;
@@ -420,7 +374,6 @@ const drawTimeSeriesCanvas = (
 };
 
 export default function TimeSeriesChart({ frames, currentIndex, mode }: Props) {
-  const strokes = usePlaybackStore((state) => state.strokes);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasSizeRef = useRef<CanvasSize>({ w: 0, h: 0 });
@@ -433,14 +386,12 @@ export default function TimeSeriesChart({ frames, currentIndex, mode }: Props) {
     safeIndex,
     mode,
     yDomain,
-    strokes,
   });
   latestRenderStateRef.current = {
     points,
     safeIndex,
     mode,
     yDomain,
-    strokes,
   };
 
   const cancelScheduledDraw = () => {
@@ -471,15 +422,9 @@ export default function TimeSeriesChart({ frames, currentIndex, mode }: Props) {
       return;
     }
 
-    const {
-      points: latestPoints,
-      safeIndex: latestSafeIndex,
-      mode: latestMode,
-      yDomain: latestYDomain,
-      strokes: latestStrokes,
-    } = latestRenderStateRef.current;
+    const { points: latestPoints, safeIndex: latestSafeIndex, mode: latestMode, yDomain: latestYDomain } = latestRenderStateRef.current;
     resizeCanvas(canvas, box, canvasSizeRef);
-    drawTimeSeriesCanvas(canvas, box, latestPoints, latestSafeIndex, latestMode, latestYDomain, latestStrokes);
+    drawTimeSeriesCanvas(canvas, box, latestPoints, latestSafeIndex, latestMode, latestYDomain);
   };
 
   useEffect(() => {
@@ -520,8 +465,8 @@ export default function TimeSeriesChart({ frames, currentIndex, mode }: Props) {
     }
 
     resizeCanvas(canvas, box, canvasSizeRef);
-    drawTimeSeriesCanvas(canvas, box, points, safeIndex, mode, yDomain, strokes);
-  }, [points, safeIndex, mode, yDomain, strokes]);
+    drawTimeSeriesCanvas(canvas, box, points, safeIndex, mode, yDomain);
+  }, [points, safeIndex, mode, yDomain]);
 
   if (frames.length === 0 || points.length === 0) {
     return (
