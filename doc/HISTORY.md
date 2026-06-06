@@ -233,16 +233,24 @@ export const analyzers = [strokeAnalyzer, /* forceCurveAnalyzer, symmetryAnalyze
 既存テスト（`src/test/` のユニットテスト）を回帰の安全網として活用し、外形的な挙動を変えずに内部を置き換える順で進める。
 
 ```
-Step 1: domain/ レイヤー新設 + 解析リポジトリ（trajectory/stroke/metrics をキャッシュ集約）
-        → 既存 utils はリポジトリ経由の薄いラッパへ。テストはそのまま緑を維持。
-Step 2: App.tsx から計算オーケストレーションをカスタムフックへ抽出（useAnalysis 等）
-Step 3: データロードを data/ に集約し manifest/custom 分岐を統合
-Step 4: store をスライス分割、strokes を導出値へ移行
-Step 5: NormalizedFrame 型を導入し、ドメイン内部を型付きに移行
-Step 6: 解析/パネルのレジストリ化（拡張ポイントの完成）
+Step 1: [完了] domain/ レイヤー新設 + 解析リポジトリ（trajectory/stroke/metrics をキャッシュ集約）
+        → 既存 utils はリポジトリ経由の薄いラッパへ移行完了。ユニットテスト（45件）およびビルド通過を確認済み。
+Step 2: [未着手] App.tsx から計算オーケストレーションをカスタムフックへ抽出（useAnalysis 等）
+Step 3: [未着手] データロードを data/ に集約し manifest/custom 分岐を統合
+Step 4: [未着手] store をスライス分割、strokes を導出値へ移行
+Step 5: [未着手] NormalizedFrame 型を導入し、ドメイン内部を型付きに移行
+Step 6: [未着手] 解析/パネルのレジストリ化（拡張ポイントの完成）
 ```
 
 各ステップは独立してマージ可能な単位とし、`test_newfunc` 系ブランチで小さく検証しながら `main` へ取り込む。
+
+#### 現在の最適化進行度 (2026-06-06)
+
+* **Step 1: 完了 (済)**
+  * `src/domain/analysisRepository.ts` の新設。`WeakMap` によるガベージコレクション対応の安全なメモリキャッシュを実現。
+  * `buildOarTrajectory` ([trajectory.ts](file:///home/koki/BOVisualizer/src/utils/trajectory.ts))、`detectStrokes` ([strokeDetect.ts](file:///home/koki/BOVisualizer/src/utils/strokeDetect.ts))、`deriveMetrics` ([metrics.ts](file:///home/koki/BOVisualizer/src/utils/metrics.ts)) の薄いラッパー化および内部関数名 (`...Internal`) への分離。
+  * 単一/全データセット間での軌跡・ストローク・メトリクス等の重複計算の排除。
+  * テストスイート（全45件）および本番ビルドの動作確認済み。
 
 ### 3.6 テスト・検証方針
 
