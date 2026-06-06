@@ -59,6 +59,8 @@ type PlaybackControlsProps = {
   onShowStrokePhasesChange?: (show: boolean) => void;
   showStrokeMetrics?: boolean;
   onShowStrokeMetricsChange?: (show: boolean) => void;
+  /** リロード（手動・自動）完了時に呼ばれるコールバック */
+  onReload?: () => void;
 };
 
 export default function PlaybackControls({
@@ -95,6 +97,7 @@ export default function PlaybackControls({
   onShowStrokePhasesChange,
   showStrokeMetrics = true,
   onShowStrokeMetricsChange,
+  onReload,
 }: PlaybackControlsProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -184,6 +187,7 @@ export default function PlaybackControls({
         }
         await loadFromDirectoryHandle(directoryHandle);
         triggerSpin();
+        onReload?.();
       } catch (err) {
         console.error('Reload directory failed:', err);
         alert(`再読み込みに失敗しました:\n${err instanceof Error ? err.message : String(err)}`);
@@ -271,6 +275,7 @@ export default function PlaybackControls({
         if (await (directoryHandle as any).queryPermission(options) === 'granted') {
           await loadFromDirectoryHandle(directoryHandle);
           triggerSpin();
+          onReload?.();
         }
       } catch (err) {
         console.warn('Background auto reload failed:', err);

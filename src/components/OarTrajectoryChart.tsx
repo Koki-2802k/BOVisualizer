@@ -254,7 +254,7 @@ const drawCanvas = (
   drawText(ctx, "水面", box.width - PLOT_PADDING.right, waterLine.y - 6, {
     align: "right",
     baseline: "bottom",
-    size: 14,
+    size: 20,
     bold: true,
     color: COLOR_BY_ANGLE.water,
   });

@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense, useState } from 'react';
+import { useEffect, lazy, Suspense, useState, useRef, useCallback } from 'react';
 import PlaybackControls from './components/PlaybackControls';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useAnimationClock } from './hooks/useAnimationClock';
@@ -84,6 +84,30 @@ function App() {
   const [activeTimeseriesTab, setActiveTimeseriesTab] = useState<'chart' | 'metrics'>('chart');
   const [activeMapTab, setActiveMapTab] = useState<'map'>('map');
   const [activeSceneTab, setActiveSceneTab] = useState<'scene'>('scene');
+
+  // メトリクステーブル用スナップショット（リロード時のみ更新）
+  type MetricsSnapshot = {
+    frames: typeof frames;
+    strokes: typeof strokes;
+    allDatasetsData: typeof allDatasetsData;
+  };
+  const [metricsSnapshot, setMetricsSnapshot] = useState<MetricsSnapshot | null>(null);
+  // 最新の frames/strokes/allDatasetsData を ref に保持（コールバック内で stale closure を防ぐ）
+  const latestAnalysisRef = useRef({ frames, strokes, allDatasetsData });
+  useEffect(() => {
+    latestAnalysisRef.current = { frames, strokes, allDatasetsData };
+  });
+
+  // リロード（手動・自動）完了時にスナップショットを更新するコールバック
+  const handleReload = useCallback(() => {
+    const { frames: f, strokes: s, allDatasetsData: a } = latestAnalysisRef.current;
+    setMetricsSnapshot({ frames: f, strokes: s, allDatasetsData: a });
+  }, []);
+
+  // スナップショット未作成時はリアルタイムの値を初期値として使用
+  const snapshotFrames = metricsSnapshot?.frames ?? frames;
+  const snapshotStrokes = metricsSnapshot?.strokes ?? strokes;
+  const snapshotAllDatasetsData = metricsSnapshot?.allDatasetsData ?? allDatasetsData;
 
   // メトリクスタブが使えない状態になったら強制的にグラフタブへ戻す
   useEffect(() => {
@@ -209,6 +233,7 @@ function App() {
         onShowStrokePhasesChange={setShowStrokePhases}
         showStrokeMetrics={showStrokeMetrics}
         onShowStrokeMetricsChange={setShowStrokeMetrics}
+        onReload={handleReload}
       />
       <div className="dashboard-area">
         {error ? (
@@ -322,10 +347,10 @@ function App() {
                   />
                 ) : (
                   <StrokeMetricsTable
-                    frames={frames}
-                    strokes={strokes}
+                    frames={snapshotFrames}
+                    strokes={snapshotStrokes}
                     currentIndex={uiFrame}
-                    allDatasetsData={allDatasetsData}
+                    allDatasetsData={snapshotAllDatasetsData}
                   />
                 )}
               </Suspense>
