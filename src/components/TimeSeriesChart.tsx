@@ -12,6 +12,7 @@ type Props = {
   strokes?: StrokeSegment[];
   /** 解析モード有効時に位相帯・凡例を表示する */
   analysisMode?: boolean;
+  showStrokePhases?: boolean;
 };
 
 type CanvasBox = {
@@ -209,13 +210,6 @@ const PHASE_COLORS: Record<string, string> = {
   recovery: 'rgba(148,163,184,0.10)',
 };
 
-const PHASE_LABELS: Record<string, string> = {
-  catch: 'キャッチ',
-  drive: 'ドライブ',
-  finish: 'フィニッシュ',
-  recovery: 'リカバリー',
-};
-
 const PHASE_BORDER_COLORS: Record<string, string> = {
   catch: 'rgba(59,130,246,0.35)',
   drive: 'rgba(34,197,94,0.35)',
@@ -232,6 +226,7 @@ const drawTimeSeriesCanvas = (
   yDomain: [number, number],
   strokes: StrokeSegment[] = [],
   analysisMode: boolean = false,
+  showStrokePhases: boolean = true,
 ) => {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) {
@@ -311,22 +306,112 @@ const drawTimeSeriesCanvas = (
 
         const x1 = PADDING.left + ((startPt.time - minTime) / timeSpan) * plotWidth;
         const x2 = PADDING.left + ((endPt.time - minTime) / timeSpan) * plotWidth;
-        const bandWidth = Math.max(1, x2 - x1);
+        const bandWidth = x2 - x1;
 
-        ctx.save();
-        ctx.fillStyle = PHASE_COLORS[seg.phase] ?? 'rgba(128,128,128,0.08)';
-        ctx.fillRect(x1, PADDING.top, bandWidth, plotHeight);
-        ctx.restore();
+        // 見せ方の工夫: キャッチとフィニッシュは短いので最小幅を保証し、色を強調する
+        let drawX = x1;
+        let drawW = Math.max(1, bandWidth);
+        let fillColor = PHASE_COLORS[seg.phase] ?? 'rgba(128,128,128,0.08)';
 
-        ctx.save();
-        ctx.strokeStyle = PHASE_BORDER_COLORS[seg.phase] ?? 'rgba(128,128,128,0.25)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 3]);
-        ctx.beginPath();
-        ctx.moveTo(x1, PADDING.top);
-        ctx.lineTo(x1, PADDING.top + plotHeight);
-        ctx.stroke();
-        ctx.restore();
+        if ((seg.phase === 'catch' || seg.phase === 'finish') && bandWidth < 8) {
+          drawW = 8;
+          drawX = x1 - (8 - bandWidth) / 2;
+          // 不透明度を高めた強調色を使用
+          fillColor = seg.phase === 'catch' 
+            ? 'rgba(59,130,246,0.32)' // キャッチ強調（青）
+            : 'rgba(249,115,22,0.36)'; // フィニッシュ強調（オレンジ）
+        }
+
+        if (showStrokePhases) {
+          ctx.save();
+          ctx.fillStyle = fillColor;
+          ctx.fillRect(drawX, PADDING.top, drawW, plotHeight);
+          ctx.restore();
+        }
+
+        if (showStrokePhases) {
+          ctx.save();
+          if (seg.phase === 'catch' || seg.phase === 'finish') {
+            // キャッチとフィニッシュの開始地点は重要な瞬間なので実線で強調
+            ctx.strokeStyle = seg.phase === 'catch' ? 'rgba(37,99,235,0.7)' : 'rgba(234,88,12,0.7)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x1, PADDING.top);
+            ctx.lineTo(x1, PADDING.top + plotHeight);
+            ctx.stroke();
+          } else {
+            // ドライブとリカバリーの開始地点は点線で静かに描画
+            ctx.strokeStyle = PHASE_BORDER_COLORS[seg.phase] ?? 'rgba(128,128,128,0.25)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(x1, PADDING.top);
+            ctx.lineTo(x1, PADDING.top + plotHeight);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+        if (showStrokePhases && (seg.phase === 'catch' || seg.phase === 'finish')) {
+          ctx.save();
+          // 上部にシンボルと文字マーカーを表示
+          const symbolY = PADDING.top + 8;
+          ctx.fillStyle = seg.phase === 'catch' ? '#2563eb' : '#ea580c';
+          
+          // 逆三角形を描画
+          ctx.beginPath();
+          ctx.moveTo(x1 - 4, symbolY - 4);
+          ctx.lineTo(x1 + 4, symbolY - 4);
+          ctx.lineTo(x1, symbolY + 2);
+          ctx.closePath();
+          ctx.fill();
+
+          // ラベル文字（C / F）
+          drawText(ctx, seg.phase === 'catch' ? 'C' : 'F', x1, symbolY - 8, {
+            align: 'center',
+            baseline: 'bottom',
+            size: 16,
+            bold: true,
+            color: seg.phase === 'catch' ? '#1d4ed8' : '#c2410c'
+          });
+          ctx.restore();
+        }
+
+        // 凡例に代わる見せ方の工夫: ドライブ/リカバリー区間の上部に横線とテキストラベルを静かに表示
+        if (showStrokePhases && (seg.phase === 'drive' || seg.phase === 'recovery')) {
+          const midX = x1 + bandWidth / 2;
+          const labelY = PADDING.top + 14;
+          const isDrive = seg.phase === 'drive';
+
+          ctx.save();
+          ctx.strokeStyle = isDrive ? 'rgba(34,197,94,0.4)' : 'rgba(148,163,184,0.4)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(x1 + 6, labelY);
+          ctx.lineTo(x2 - 6, labelY);
+          ctx.stroke();
+
+          const labelText = isDrive ? 'Drive' : 'Recovery';
+          const labelColor = isDrive ? '#16a34a' : '#64748b';
+          
+          ctx.font = 'bold 16px Arial, sans-serif';
+          const textWidth = ctx.measureText(labelText).width;
+          const minWidthForLabel = textWidth + 16;
+
+          if (bandWidth > minWidthForLabel) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(midX - textWidth / 2 - 6, labelY - 10, textWidth + 12, 20);
+
+            drawText(ctx, labelText, midX, labelY, {
+              align: 'center',
+              baseline: 'middle',
+              size: 16,
+              bold: true,
+              color: labelColor
+            });
+          }
+          ctx.restore();
+        }
       });
     });
   }
@@ -425,37 +510,7 @@ const drawTimeSeriesCanvas = (
     });
   }
 
-  // 位相凡例（解析モード時のみ、右上に小さく表示）
-  if (analysisMode && strokes.length > 0) {
-    const phaseOrder: Array<keyof typeof PHASE_COLORS> = ['catch', 'drive', 'finish', 'recovery'];
-    const legendItemH = 18;
-    const legendPadX = 10;
-    const legendPadY = 6;
-    // gyro 凡例の下に配置するため、gyro モードのときは少し下にずらす
-    const baseY = mode === 'gyro' ? PADDING.top + 80 : PADDING.top + 12;
 
-    phaseOrder.forEach((phase, idx) => {
-      const iy = baseY + idx * legendItemH + legendPadY;
-      const ix = box.width - PADDING.right - 96 - legendPadX;
-
-      // 色帯プレビュー
-      ctx.save();
-      ctx.fillStyle = PHASE_COLORS[phase] ?? 'rgba(128,128,128,0.12)';
-      ctx.strokeStyle = PHASE_BORDER_COLORS[phase] ?? 'rgba(128,128,128,0.3)';
-      ctx.lineWidth = 1;
-      ctx.fillRect(ix, iy - 7, 14, 12);
-      ctx.strokeRect(ix, iy - 7, 14, 12);
-      ctx.restore();
-
-      drawText(ctx, PHASE_LABELS[phase] ?? phase, ix + 18, iy, {
-        align: 'left',
-        baseline: 'middle',
-        size: 12,
-        bold: false,
-        color: LINE_COLORS.label,
-      });
-    });
-  }
 
   drawText(ctx, "Time (s)", PADDING.left + plotWidth / 2, box.height - 6, {
     align: "center",
@@ -466,7 +521,14 @@ const drawTimeSeriesCanvas = (
   });
 };
 
-export default function TimeSeriesChart({ frames, currentIndex, mode, strokes = [], analysisMode = false }: Props) {
+export default function TimeSeriesChart({
+  frames,
+  currentIndex,
+  mode,
+  strokes = [],
+  analysisMode = false,
+  showStrokePhases = true
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasSizeRef = useRef<CanvasSize>({ w: 0, h: 0 });
@@ -481,6 +543,7 @@ export default function TimeSeriesChart({ frames, currentIndex, mode, strokes = 
     yDomain,
     strokes,
     analysisMode,
+    showStrokePhases,
   });
   latestRenderStateRef.current = {
     points,
@@ -489,6 +552,7 @@ export default function TimeSeriesChart({ frames, currentIndex, mode, strokes = 
     yDomain,
     strokes,
     analysisMode,
+    showStrokePhases,
   };
 
   const cancelScheduledDraw = () => {
@@ -519,9 +583,27 @@ export default function TimeSeriesChart({ frames, currentIndex, mode, strokes = 
       return;
     }
 
-    const { points: latestPoints, safeIndex: latestSafeIndex, mode: latestMode, yDomain: latestYDomain, strokes: latestStrokes, analysisMode: latestAnalysisMode } = latestRenderStateRef.current;
+    const {
+      points: latestPoints,
+      safeIndex: latestSafeIndex,
+      mode: latestMode,
+      yDomain: latestYDomain,
+      strokes: latestStrokes,
+      analysisMode: latestAnalysisMode,
+      showStrokePhases: latestShowStrokePhases,
+    } = latestRenderStateRef.current;
     resizeCanvas(canvas, box, canvasSizeRef);
-    drawTimeSeriesCanvas(canvas, box, latestPoints, latestSafeIndex, latestMode, latestYDomain, latestStrokes, latestAnalysisMode);
+    drawTimeSeriesCanvas(
+      canvas,
+      box,
+      latestPoints,
+      latestSafeIndex,
+      latestMode,
+      latestYDomain,
+      latestStrokes,
+      latestAnalysisMode,
+      latestShowStrokePhases,
+    );
   };
 
   useEffect(() => {
@@ -562,8 +644,18 @@ export default function TimeSeriesChart({ frames, currentIndex, mode, strokes = 
     }
 
     resizeCanvas(canvas, box, canvasSizeRef);
-    drawTimeSeriesCanvas(canvas, box, points, safeIndex, mode, yDomain, strokes, analysisMode);
-  }, [points, safeIndex, mode, yDomain, strokes, analysisMode]);
+    drawTimeSeriesCanvas(
+      canvas,
+      box,
+      points,
+      safeIndex,
+      mode,
+      yDomain,
+      strokes,
+      analysisMode,
+      showStrokePhases,
+    );
+  }, [points, safeIndex, mode, yDomain, strokes, analysisMode, showStrokePhases]);
 
   if (frames.length === 0 || points.length === 0) {
     return (

@@ -55,6 +55,8 @@ type PlaybackControlsProps = {
   /** 検出済みストローク数（トグルボタンのバッジ表示と無効化制御用） */
   strokeCount?: number;
   onAnalysisModeChange?: (enabled: boolean) => void;
+  showStrokePhases?: boolean;
+  onShowStrokePhasesChange?: (show: boolean) => void;
 };
 
 export default function PlaybackControls({
@@ -87,6 +89,8 @@ export default function PlaybackControls({
   analysisMode = false,
   strokeCount = 0,
   onAnalysisModeChange,
+  showStrokePhases = true,
+  onShowStrokePhasesChange,
 }: PlaybackControlsProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -241,6 +245,7 @@ export default function PlaybackControls({
   };
 
   const [showOptions, setShowOptions] = useState(false);
+  const [showAnalysisDetails, setShowAnalysisDetails] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
 
   const triggerSpin = () => {
@@ -282,6 +287,7 @@ export default function PlaybackControls({
     if (!showOptions) return;
     const handleDocumentClick = () => {
       setShowOptions(false);
+      setShowAnalysisDetails(false);
     };
     document.addEventListener('click', handleDocumentClick);
     return () => {
@@ -303,6 +309,53 @@ export default function PlaybackControls({
         {showOptions && (
           <div className="options-popover" onClick={(e) => e.stopPropagation()}>
             <h4 style={{ margin: '0 0 12px 0', fontSize: '25px', color: '#f8fafc', borderBottom: '1px solid rgba(255, 255, 255, 0.15)', paddingBottom: '8px', textAlign: 'left', fontWeight: 600 }}>設定オプション</h4>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px', margin: '8px 0 12px 0', opacity: strokeCount === 0 ? 0.5 : 1 }}>
+              <label className="option-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', cursor: strokeCount === 0 ? 'not-allowed' : 'pointer', color: '#e2e8f0', fontSize: '20px', margin: 0, minWidth: 'auto', fontWeight: 500, flexGrow: 1 }}>
+                <input
+                  type="checkbox"
+                  checked={analysisMode}
+                  onChange={(e) => {
+                    onAnalysisModeChange?.(e.target.checked);
+                    if (!e.target.checked) {
+                      setShowAnalysisDetails(false);
+                    }
+                  }}
+                  disabled={strokeCount === 0}
+                  style={{ width: '30px', height: '30px', cursor: strokeCount === 0 ? 'not-allowed' : 'pointer', margin: 0 }}
+                />
+                <span style={{ userSelect: 'none' }}>解析表示を有効化 </span>
+              </label>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAnalysisDetails((prev) => !prev);
+                }}
+                disabled={strokeCount === 0 || !analysisMode}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '8px',
+                  backgroundColor: showAnalysisDetails ? '#38bdf8' : 'rgba(255, 255, 255, 0.1)',
+                  color: showAnalysisDetails ? '#0f172a' : '#f8fafc',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  cursor: (strokeCount === 0 || !analysisMode) ? 'not-allowed' : 'pointer',
+                  padding: 0,
+                  margin: 0,
+                  transition: 'all 0.2s',
+                  opacity: (strokeCount === 0 || !analysisMode) ? 0.5 : 1
+                }}
+                title="解析詳細設定を表示"
+              >
+                &gt;
+              </button>
+            </div>
 
             <label className="option-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', cursor: 'pointer', color: '#e2e8f0', fontSize: '20px', margin: '8px 0 12px 0', minWidth: 'auto', fontWeight: 500 }}>
               <input
@@ -402,6 +455,54 @@ export default function PlaybackControls({
                 <option value="play" style={{ backgroundColor: '#1e293b' }}>開始</option>
               </select>
             </label>
+
+            {showAnalysisDetails && (
+              <div
+                className="options-popover"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 'calc(100% + 12px)',
+                  minWidth: '400px',
+                  margin: 0
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  onClick={() => setShowAnalysisDetails(false)}
+                  style={{
+                    position: 'absolute',
+                    top: '16px',
+                    right: '16px',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    padding: 0,
+                    margin: 0,
+                    lineHeight: 1
+                  }}
+                  title="閉じる"
+                >
+                  ×
+                </button>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '25px', color: '#f8fafc', borderBottom: '1px solid rgba(255, 255, 255, 0.15)', paddingBottom: '8px', textAlign: 'left', fontWeight: 600 }}>解析詳細オプション</h4>
+
+                <label className="option-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', cursor: 'pointer', color: '#e2e8f0', fontSize: '20px', margin: '8px 0', minWidth: 'auto', fontWeight: 500 }}>
+                  <input
+                    type="checkbox"
+                    checked={showStrokePhases}
+                    onChange={(e) => onShowStrokePhasesChange?.(e.target.checked)}
+                    style={{ width: '26px', height: '26px', cursor: 'pointer', margin: 0 }}
+                  />
+                  <span style={{ userSelect: 'none' }}>ストローク分割</span>
+                </label>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -516,29 +617,6 @@ export default function PlaybackControls({
         title="フォルダ内を再読み込み"
       >
         <img src={`${import.meta.env.BASE_URL}RELOAD.png`} alt="再読み込み" className={isSpinning ? 'spinning' : ''} />
-      </button>
-
-      <button
-        id="analysis-mode-toggle"
-        type="button"
-        onClick={() => onAnalysisModeChange?.(!analysisMode)}
-        disabled={strokeCount === 0}
-        title={strokeCount === 0 ? 'ストロークが検出されていません' : analysisMode ? '解析モードをオフにする' : '解析モードをオンにする（位相帯表示）'}
-        style={{
-          position: 'relative',
-          background: analysisMode
-            ? 'linear-gradient(135deg, rgba(34,197,94,0.25), rgba(59,130,246,0.25))'
-            : undefined,
-          borderColor: analysisMode ? 'rgba(34,197,94,0.6)' : undefined,
-          color: analysisMode ? '#86efac' : undefined,
-          opacity: strokeCount === 0 ? 0.45 : 1,
-          cursor: strokeCount === 0 ? 'not-allowed' : 'pointer',
-          fontSize: '18px',
-          padding: '4px 10px',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        🔬 解析{strokeCount > 0 ? ` (${strokeCount})` : ''}
       </button>
     </section>
   );

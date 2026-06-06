@@ -1,22 +1,32 @@
 /**
- * strokeDetect.ts
+ * strokeDetect.ts — v3 (Rowing Biomechanics based on vertical trajectory)
  *
- * ローイングフレーム列からストロークを自動検出し、
- * キャッチ → ドライブ → フィニッシュ → リカバリー の 4 位相に分割する純粋関数群。
+ * ローイングの 1 ストロークと 4 位相の定義（軌跡 Z 軸基準）:
  *
- * 検出アルゴリズム:
- *   1. angle_right（なければ angle_left、なければ accx）の平滑化系列を作る
- *   2. 局所最小値（キャッチ端）と局所最大値（フィニッシュ端）を交互に検出する
- *   3. 最小 → 最大 の間隔をドライブ、最大 → 次の最小 の間隔をリカバリー＋キャッチとする
+ *   水面しきい値: -30cm
+ *   キャッチ (Catch)    : ブレードが空中 (Z >= -30cm) から水面についた (Z < -30cm) 瞬間。
+ *                        左右でタイミングが違う場合は、「先についた瞬間」から「もう片方のオールがつくまで」をキャッチとする。
+ *   ドライブ (Drive)    : キャッチの終了から、フィニッシュの開始まで（水中にある状態）。
+ *   フィニッシュ (Finish): ブレードが水中 (Z <= -30cm) から空中 (Z > -30cm) に出る瞬間。
+ *                        左右でタイミングが違う場合は、「最初に出た瞬間」から「もう片方のオールが出るまで」をフィニッシュとする。
+ *   リカバリー (Recovery): フィニッシュから次のキャッチまでの間（空中にある状態）。
+ *                        ※ストローク開始 (0フレーム目) から最初のキャッチまでもリカバリーに分類される。
+ *
+ * 1 ストロークの区切り:
+ *   水中セッション (キャッチ〜フィニッシュ) の繰り返しに基づき、
+ *   前のフィニッシュの直後から、今回のフィニッシュまでを 1 ストロークとして組み立てる。
+ *   - ストローク i の開始: (i === 0) ? 0 : sessions[i-1].finishEnd + 1
+ *   - ストローク i の終了: (i === M-1) ? frames.length - 1 : sessions[i].finishEnd
+ *   - phases構成: [recovery, catch, drive, finish, (recovery ※最後のストロークのみ)]
  */
 
 import type { RowingFrame } from '../types/rowing';
 import type { StrokePhase, PhaseSegment, StrokeSegment } from '../types/strokeDetect';
+import { buildOarTrajectory } from './trajectory';
 
-// ─────────────────────────────────────────
-// 内部ユーティリティ
-// ─────────────────────────────────────────
-
+/**
+ * フレーム列からストロークセグメント列を検出して返す。
+ */
 const toNum = (v: unknown): number | null => {
   if (typeof v === 'number' && Number.isFinite(v)) return v;
   if (typeof v === 'string') {
@@ -26,171 +36,192 @@ const toNum = (v: unknown): number | null => {
   return null;
 };
 
-/** 移動平均スムージング（windowSize は奇数推奨）*/
-function movingAverage(arr: number[], windowSize: number): number[] {
-  const half = Math.floor(windowSize / 2);
-  return arr.map((_, i) => {
-    const from = Math.max(0, i - half);
-    const to = Math.min(arr.length - 1, i + half);
-    let sum = 0;
-    for (let j = from; j <= to; j++) sum += arr[j];
-    return sum / (to - from + 1);
-  });
-}
+function estimateFps(frames: RowingFrame[]): number {
+  const N = Math.min(frames.length - 1, 60);
+  if (N < 2) return 30;
 
-/**
- * フレーム列からオール角（または加速度）の数値配列を抽出する。
- * angle_right → angle_left → accx の優先順で選択する。
- */
-function extractAngleSeries(frames: RowingFrame[]): { series: number[]; key: string } | null {
-  const candidates: string[] = ['angle_right', 'angle_left', 'accx'];
-  for (const key of candidates) {
-    const nums = frames.map((f) => toNum(f[key]));
-    const validCount = nums.filter((v) => v !== null).length;
-    if (validCount > frames.length * 0.5) {
-      // 欠損は線形補間で埋める
-      const filled = interpolateMissing(nums);
-      return { series: filled, key };
+  // time_s (秒) を優先
+  const t0s = toNum(frames[0]?.['time_s']);
+  const tNs = toNum(frames[N]?.['time_s']);
+  if (t0s !== null && tNs !== null && tNs > t0s) {
+    return N / (tNs - t0s);
+  }
+
+  // 文字列の time (ISO 日時 or ms)
+  const t0 = frames[0]?.['time'];
+  const tN = frames[N]?.['time'];
+  if (typeof t0 === 'string' && typeof tN === 'string') {
+    const ms0 = Date.parse(t0);
+    const msN = Date.parse(tN);
+    if (!Number.isNaN(ms0) && !Number.isNaN(msN) && msN > ms0) {
+      return (N * 1000) / (msN - ms0);
     }
   }
-  return null;
+
+  return 30;
 }
-
-/** null を線形補間で埋める */
-function interpolateMissing(arr: (number | null)[]): number[] {
-  const result: number[] = new Array(arr.length).fill(0);
-  // 最初の有効値を探す
-  let lastValidIdx = -1;
-  let lastValidVal = 0;
-
-  for (let i = 0; i < arr.length; i++) {
-    if (arr[i] !== null) {
-      lastValidIdx = i;
-      lastValidVal = arr[i] as number;
-      break;
-    }
-  }
-  if (lastValidIdx === -1) return result;
-
-  // 前半の null を先頭の値で埋める
-  for (let i = 0; i < lastValidIdx; i++) result[i] = lastValidVal;
-
-  for (let i = lastValidIdx; i < arr.length; i++) {
-    if (arr[i] !== null) {
-      result[i] = arr[i] as number;
-      lastValidIdx = i;
-      lastValidVal = arr[i] as number;
-    } else {
-      // 次の有効値を探して線形補間
-      let nextIdx = i + 1;
-      while (nextIdx < arr.length && arr[nextIdx] === null) nextIdx++;
-      if (nextIdx < arr.length) {
-        const nextVal = arr[nextIdx] as number;
-        result[i] = lastValidVal + ((nextVal - lastValidVal) * (i - lastValidIdx)) / (nextIdx - lastValidIdx);
-      } else {
-        result[i] = lastValidVal;
-      }
-    }
-  }
-  return result;
-}
-
-/**
- * 平滑化された系列から局所極値のインデックスを検出する。
- * minDist: 隣り合う極値間の最小フレーム数（ノイズ除去）
- */
-function findPeaks(series: number[], minDist: number, type: 'min' | 'max'): number[] {
-  const sign = type === 'max' ? 1 : -1;
-  const peaks: number[] = [];
-  let lastPeakIdx = -minDist * 2;
-
-  for (let i = 1; i < series.length - 1; i++) {
-    const cur = series[i] * sign;
-    const prev = series[i - 1] * sign;
-    const next = series[i + 1] * sign;
-    if (cur > prev && cur >= next && i - lastPeakIdx >= minDist) {
-      peaks.push(i);
-      lastPeakIdx = i;
-    }
-  }
-  return peaks;
-}
-
-// ─────────────────────────────────────────
-// メイン: detectStrokes
-// ─────────────────────────────────────────
 
 /**
  * フレーム列からストロークセグメント列を検出して返す。
- * データが不足している場合は空配列を返す（クラッシュしない）。
  */
 export function detectStrokes(frames: RowingFrame[]): StrokeSegment[] {
   if (frames.length < 10) return [];
 
-  // 1. 角度系列の抽出
-  const extracted = extractAngleSeries(frames);
-  if (!extracted) return [];
-  const { series: rawSeries } = extracted;
+  const fps = estimateFps(frames);
 
-  // 2. SPM から最小ストローク幅を推定（なければ 30フレーム ≒ 1秒@30fps を最小とする）
-  let minStrokeFrames = 30;
-  const spmValues = frames.map((f) => toNum(f['SPM'])).filter((v): v is number => v !== null && v > 0);
-  if (spmValues.length > 0) {
-    const avgSpm = spmValues.reduce((a, b) => a + b, 0) / spmValues.length;
-    // fps を推定（time_s が使える場合）
-    const t0 = toNum(frames[0]?.['time_s']);
-    const t1 = toNum(frames[Math.min(30, frames.length - 1)]?.['time_s']);
-    const estimatedFps = t0 !== null && t1 !== null && t1 > t0 ? 30 / (t1 - t0) : 30;
-    // 1ストロークのフレーム数 = fps * 60 / spm
-    minStrokeFrames = Math.max(10, Math.floor((estimatedFps * 60) / avgSpm / 2));
+  // 軌跡データを構築して Z 軸座標（水面クロス -30cm）を基にしたタイミングをスキャンする
+  const trajectory = buildOarTrajectory(frames);
+  const N = trajectory.length;
+
+  const isLeftIn = (tIdx: number) => {
+    const z = trajectory[tIdx]?.leftZ;
+    return z !== undefined && z !== null && z <= -30;
+  };
+  const isRightIn = (tIdx: number) => {
+    const z = trajectory[tIdx]?.rightZ;
+    return z !== undefined && z !== null && z <= -30;
+  };
+  const isInWater = (tIdx: number) => isLeftIn(tIdx) || isRightIn(tIdx);
+  const isBothIn = (tIdx: number) => isLeftIn(tIdx) && isRightIn(tIdx);
+
+  interface WaterSession {
+    catchStart: number;
+    catchEnd: number;
+    finishStart: number;
+    finishEnd: number;
   }
 
-  // 3. 平滑化（ウィンドウ = minStrokeFrames の半分程度）
-  const smoothed = movingAverage(rawSeries, Math.max(3, Math.floor(minStrokeFrames / 4)));
+  const sessions: WaterSession[] = [];
+  let tScan = 0;
 
-  // 4. 局所最小（キャッチ相当）と局所最大（フィニッシュ相当）を検出
-  const localMins = findPeaks(smoothed, minStrokeFrames, 'min');
-  const localMaxs = findPeaks(smoothed, minStrokeFrames, 'max');
+  while (tScan < N) {
+    if (!isInWater(tScan)) {
+      tScan++;
+      continue;
+    }
 
-  if (localMins.length < 2) return [];
+    const catchStart = tScan;
 
-  // 5. ストロークを組み立てる（min → max → min → max … の順序で）
-  const strokes: StrokeSegment[] = [];
+    // 左右両方が水に入る瞬間を探す
+    let catchEnd = catchStart;
+    let searchT = catchStart;
+    let foundBoth = false;
 
-  for (let i = 0; i < localMins.length - 1; i++) {
-    const catchFrame = localMins[i];
-    const nextCatchFrame = localMins[i + 1];
+    while (searchT < N && isInWater(searchT)) {
+      if (isBothIn(searchT)) {
+        catchEnd = searchT;
+        foundBoth = true;
+        break;
+      }
+      searchT++;
+    }
 
-    // このストローク区間内にある局所最大を探す
-    const driveMaxIdx = localMaxs.find((m) => m > catchFrame && m < nextCatchFrame);
+    if (!foundBoth) {
+      catchEnd = catchStart;
+    }
 
-    const strokeStart = catchFrame;
-    const strokeEnd = nextCatchFrame - 1;
-
-    let phases: PhaseSegment[];
-
-    if (driveMaxIdx !== undefined) {
-      // フィニッシュ端 = ドライブ最大値の直後（ここでは driveMaxIdx + 少し）
-      // キャッチ端 = catchFrame
-      // ドライブ端 = driveMaxIdx
-      // フィニッシュ端 ≒ driveMaxIdx + (nextCatch - driveMaxIdx) * 0.2
-      const finishEnd = Math.round(driveMaxIdx + (nextCatchFrame - driveMaxIdx) * 0.25);
-
-      phases = [
-        { phase: 'catch', startFrame: strokeStart, endFrame: catchFrame },
-        { phase: 'drive', startFrame: catchFrame, endFrame: driveMaxIdx },
-        { phase: 'finish', startFrame: driveMaxIdx, endFrame: finishEnd },
-        { phase: 'recovery', startFrame: finishEnd, endFrame: strokeEnd },
-      ];
+    // フィニッシュの開始（いずれかが水から出る瞬間）を探す
+    let finishStart = catchEnd + 1;
+    if (foundBoth) {
+      let searchFinish = catchEnd;
+      while (searchFinish < N && isInWater(searchFinish)) {
+        if (!isBothIn(searchFinish)) {
+          finishStart = searchFinish;
+          break;
+        }
+        searchFinish++;
+      }
+      if (finishStart >= N || !isInWater(finishStart)) {
+        let searchEndW = catchEnd;
+        while (searchEndW < N && isInWater(searchEndW)) searchEndW++;
+        finishStart = Math.max(catchEnd + 1, searchEndW - 1);
+      }
     } else {
-      // 局所最大が見つからない場合はシンプルに 2 分割
-      const mid = Math.round((strokeStart + strokeEnd) / 2);
-      phases = [
-        { phase: 'catch', startFrame: strokeStart, endFrame: strokeStart },
-        { phase: 'drive', startFrame: strokeStart, endFrame: mid },
-        { phase: 'finish', startFrame: mid, endFrame: mid },
-        { phase: 'recovery', startFrame: mid, endFrame: strokeEnd },
-      ];
+      let searchEndW = catchStart;
+      while (searchEndW < N && isInWater(searchEndW)) searchEndW++;
+      finishStart = Math.max(catchStart + 1, searchEndW - 1);
+    }
+
+    // 水から完全に脱出する瞬間を探す
+    let finishEnd = finishStart;
+    while (finishEnd < N && isInWater(finishEnd)) {
+      finishEnd++;
+    }
+    finishEnd = Math.max(finishStart, finishEnd - 1);
+
+    // チャタリング・ノイズ対策: あまりにも短い水中セッション（約0.25秒未満）はノイズとして除外
+    const minSessionLen = Math.max(8, Math.round(fps * 0.25));
+    if (finishEnd - catchStart + 1 < minSessionLen) {
+      tScan = finishEnd + 1;
+      continue;
+    }
+
+    sessions.push({
+      catchStart,
+      catchEnd,
+      finishStart,
+      finishEnd,
+    });
+
+    tScan = finishEnd + 1;
+  }
+
+  // 最終的なストロークと 4 位相の組み立て
+  const strokes: StrokeSegment[] = [];
+  if (sessions.length === 0) return [];
+
+  for (let i = 0; i < sessions.length; i++) {
+    const sess = sessions[i];
+
+    // ストローク範囲の決定
+    const strokeStart = (i === 0) ? 0 : sessions[i - 1].finishEnd + 1;
+    const strokeEnd = (i === sessions.length - 1) ? N - 1 : sessions[i].finishEnd;
+
+    const phases: PhaseSegment[] = [];
+
+    // 1. recovery (開始前のリカバリー区間)
+    if (strokeStart < sess.catchStart) {
+      phases.push({
+        phase: 'recovery',
+        startFrame: strokeStart,
+        endFrame: sess.catchStart - 1,
+      });
+    }
+
+    // 2. catch
+    const adjCatchEnd = Math.min(sess.catchEnd, sess.finishStart - 1);
+    phases.push({
+      phase: 'catch',
+      startFrame: sess.catchStart,
+      endFrame: adjCatchEnd,
+    });
+
+    // 3. drive
+    const driveStart = adjCatchEnd + 1;
+    const adjFinishStart = Math.max(sess.finishStart, driveStart);
+    if (driveStart < adjFinishStart) {
+      phases.push({
+        phase: 'drive',
+        startFrame: driveStart,
+        endFrame: adjFinishStart - 1,
+      });
+    }
+
+    // 4. finish
+    const adjFinishEnd = Math.min(Math.max(sess.finishEnd, adjFinishStart), strokeEnd);
+    phases.push({
+      phase: 'finish',
+      startFrame: adjFinishStart,
+      endFrame: adjFinishEnd,
+    });
+
+    // 5. recovery (終了後のリカバリー区間。最後のストロークの末尾のみ適用される)
+    if (adjFinishEnd < strokeEnd) {
+      phases.push({
+        phase: 'recovery',
+        startFrame: adjFinishEnd + 1,
+        endFrame: strokeEnd,
+      });
     }
 
     strokes.push({
@@ -245,11 +276,13 @@ export function getCurrentPhaseInfo(
 /**
  * 現在の位相から N ステップ進んだ位相の先頭フレームを返す。
  * strokes が空の場合は currentFrame をそのまま返す。
+ *
+ * @param delta  +1 = 次の位相へ, -1 = 前の位相へ
  */
 export function seekByPhase(
   strokes: StrokeSegment[],
   currentFrame: number,
-  delta: number, // +1 = 次の位相, -1 = 前の位相
+  delta: number,
 ): number {
   if (strokes.length === 0) return currentFrame;
 
@@ -269,14 +302,14 @@ export function seekByPhase(
   // 見つからない場合は最も近い位相を選ぶ
   if (currentFlatIdx === -1) {
     let minDist = Infinity;
-    allPhases.forEach((p, i) => {
+    allPhases.forEach((p, idx) => {
       const dist = Math.min(
         Math.abs(currentFrame - p.seg.startFrame),
         Math.abs(currentFrame - p.seg.endFrame),
       );
       if (dist < minDist) {
         minDist = dist;
-        currentFlatIdx = i;
+        currentFlatIdx = idx;
       }
     });
   }

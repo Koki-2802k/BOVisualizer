@@ -32,6 +32,7 @@ function App() {
     playOnSwitch,
     strokes,
     analysisMode,
+    showStrokePhases,
     setDatasets,
     setSelectedDatasetId,
     setIsPlaying,
@@ -48,6 +49,7 @@ function App() {
     setPlayOnSwitch,
     setStrokes,
     setAnalysisMode,
+    setShowStrokePhases,
   } = usePlaybackStore();
 
   const datasetState = useDataset(selectedDatasetId);
@@ -198,6 +200,8 @@ function App() {
         analysisMode={analysisMode}
         strokeCount={strokes.length}
         onAnalysisModeChange={setAnalysisMode}
+        showStrokePhases={showStrokePhases}
+        onShowStrokePhasesChange={setShowStrokePhases}
       />
       <div className="dashboard-area">
         {error ? (
@@ -244,6 +248,7 @@ function App() {
                   mode={graphMode}
                   strokes={strokes}
                   analysisMode={analysisMode}
+                  showStrokePhases={showStrokePhases}
                 />
               </Suspense>
             </ErrorBoundary>

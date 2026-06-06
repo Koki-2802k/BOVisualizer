@@ -19,10 +19,9 @@ type PlaybackState = {
   initialGraphMode: GraphMode;
   oarSide: 'right' | 'left';
   playOnSwitch: boolean;
-  /** 検出済みストロークセグメント一覧 */
   strokes: StrokeSegment[];
-  /** 解析モード: true のとき位相帯などの解析表示を行う */
   analysisMode: boolean;
+  showStrokePhases: boolean;
   setDatasets: (datasets: DatasetManifestItem[]) => void;
   setSelectedDatasetId: (datasetId: string) => void;
   setIsPlaying: (isPlaying: boolean) => void;
@@ -41,6 +40,7 @@ type PlaybackState = {
   setAutoReloadInterval: (interval: number) => void;
   setStrokes: (strokes: StrokeSegment[]) => void;
   setAnalysisMode: (enabled: boolean) => void;
+  setShowStrokePhases: (show: boolean) => void;
 };
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
@@ -70,7 +70,8 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
   oarSide: 'right',
   playOnSwitch: false,
   strokes: [],
-  analysisMode: false,
+  analysisMode: true,
+  showStrokePhases: true,
   setInitialOarSide: (initialOarSide) => set({ initialOarSide }),
   setInitialGraphMode: (initialGraphMode) => set({ initialGraphMode }),
   setOarSide: (oarSide) => set({ oarSide }),
@@ -169,4 +170,5 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
   setAutoReloadInterval: (autoReloadInterval) => set({ autoReloadInterval: clamp(autoReloadInterval, 2, 60) }),
   setStrokes: (strokes) => set({ strokes }),
   setAnalysisMode: (analysisMode) => set({ analysisMode }),
+  setShowStrokePhases: (showStrokePhases) => set({ showStrokePhases }),
 }));
