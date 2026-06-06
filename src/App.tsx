@@ -1,14 +1,11 @@
-import { useEffect, useMemo, lazy, Suspense, useState } from 'react';
+import { useEffect, lazy, Suspense, useState } from 'react';
 import PlaybackControls from './components/PlaybackControls';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useAnimationClock } from './hooks/useAnimationClock';
 import { useDataset } from './hooks/useDataset';
 import { usePlaybackStore } from './store/playbackStore';
-import { deriveMetrics } from './utils/metrics';
-import { detectStrokes, seekByPhase } from './utils/strokeDetect';
-import { parseRowingCsv } from './utils/csvParser';
-import type { RowingFrame } from './types/rowing';
-import type { DatasetStrokeData } from './components/StrokeMetricsTable';
+import { seekByPhase } from './utils/strokeDetect';
+import { useAnalysis } from './hooks/useAnalysis';
 import './App.css';
 import './index.css';
 
@@ -46,7 +43,6 @@ function App() {
     setIsPlaying,
     setFps,
     setSeekFrame,
-    setMaxFrame,
     setGraphMode,
     setCustomDatasets,
     setDirectoryHandle,
@@ -55,7 +51,6 @@ function App() {
     setInitialOarSide,
     setInitialGraphMode,
     setPlayOnSwitch,
-    setStrokes,
     setAnalysisMode,
     setShowStrokePhases,
     setShowStrokeMetrics,
@@ -63,13 +58,14 @@ function App() {
 
   const datasetState = useDataset(selectedDatasetId);
 
-  const isCustom = selectedDatasetId in customDatasets;
-  const frames = useMemo(() => {
-    if (isCustom) {
-      return customDatasets[selectedDatasetId]?.frames ?? [];
-    }
-    return datasetState.dataset?.frames ?? [];
-  }, [isCustom, selectedDatasetId, customDatasets, datasetState.dataset]);
+  const {
+    frames,
+    metrics,
+    allDatasetsData,
+    hasAnyStrokes,
+    loading,
+    error,
+  } = useAnalysis(datasetState);
 
   useEffect(() => {
     const customCount = Object.keys(customDatasets).length;
@@ -77,107 +73,6 @@ function App() {
       setDatasets(datasetState.manifest);
     }
   }, [datasetState.manifest, setDatasets, customDatasets]);
-
-  useEffect(() => {
-    setMaxFrame(Math.max(frames.length - 1, 0));
-  }, [frames.length, setMaxFrame]);
-
-  // 現在選択中のデータセットのストロークを再検出する
-  useEffect(() => {
-    if (frames.length < 10) {
-      setStrokes([]);
-      return;
-    }
-    const detected = detectStrokes(frames);
-    setStrokes(detected);
-  }, [frames, setStrokes]);
-
-  // マニフェストの全データセットを非同期で読み込んでキャッシュする
-  // （カスタムデータセット未使用時のメトリクス全件表示に使用）
-  const [allManifestFrames, setAllManifestFrames] = useState<
-    Array<{ id: string; label: string; frames: RowingFrame[] }>
-  >([]);
-
-  useEffect(() => {
-    const manifest = datasetState.manifest;
-    if (manifest.length === 0) return;
-
-    // カスタムデータセット使用中はマニフェスト一括読み込みをスキップ
-    if (Object.keys(customDatasets).length > 0) {
-      setAllManifestFrames([]);
-      return;
-    }
-
-    let cancelled = false;
-
-    async function loadAllManifest() {
-      const results: Array<{ id: string; label: string; frames: RowingFrame[] }> = [];
-      for (const item of manifest) {
-        try {
-          const path = item.path.startsWith('/') ? item.path.slice(1) : item.path;
-          const response = await fetch(`${import.meta.env.BASE_URL}${path}`);
-          if (!response.ok) continue;
-          const csv = await response.text();
-          if (cancelled) return;
-          const parsed = parseRowingCsv(csv);
-          results.push({ id: item.id, label: item.label, frames: parsed.frames ?? [] });
-        } catch {
-          // 読み込み失敗はスキップ
-        }
-      }
-      if (!cancelled) {
-        setAllManifestFrames(results);
-      }
-    }
-
-    void loadAllManifest();
-    return () => {
-      cancelled = true;
-    };
-  }, [datasetState.manifest, customDatasets]);
-
-  // 全データセット横断ストロークデータ
-  // カスタムデータセット使用時はそこから、未使用時はマニフェスト全件から生成
-  const allDatasetsData = useMemo<DatasetStrokeData[] | undefined>(() => {
-    const customEntries = Object.entries(customDatasets);
-
-    if (customEntries.length > 0) {
-      // カスタムデータセット（フォルダ読み込み）モード
-      const result = customEntries
-        .map(([id, data]) => {
-          const datasetFrames = data.frames ?? [];
-          if (datasetFrames.length < 10) return null;
-          const datasetLabel = datasets.find((d) => d.id === id)?.label ?? id;
-          const datasetStrokes = detectStrokes(datasetFrames);
-          return { id, label: datasetLabel, frames: datasetFrames, strokes: datasetStrokes };
-        })
-        .filter((d): d is DatasetStrokeData => d !== null)
-        .sort((a, b) =>
-          a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' }),
-        );
-      return result.length > 0 ? result : undefined;
-    }
-
-    // マニフェストデータセットモード
-    if (allManifestFrames.length === 0) return undefined;
-
-    const result = allManifestFrames
-      .map(({ id, label, frames: mFrames }) => {
-        if (mFrames.length < 10) return null;
-        const datasetStrokes = detectStrokes(mFrames);
-        return { id, label, frames: mFrames, strokes: datasetStrokes };
-      })
-      .filter((d): d is DatasetStrokeData => d !== null)
-      .sort((a, b) =>
-        a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' }),
-      );
-    return result.length > 0 ? result : undefined;
-  }, [customDatasets, datasets, allManifestFrames]);
-
-  // ストロークが1件でもあるかどうか（メトリクスタブ表示判定）
-  const hasAnyStrokes =
-    (allDatasetsData && allDatasetsData.some((d) => d.strokes.length > 0)) ||
-    strokes.length > 0;
 
   const { uiFrame } = useAnimationClock({
     frameCount: frames.length,
@@ -264,17 +159,6 @@ function App() {
   }, [isPlaying, setIsPlaying, datasets, selectedDatasetId, setSelectedDatasetId, strokes, uiFrame, setSeekFrame]);
 
   const currentFrame = frames[uiFrame] ?? null;
-
-  const activeDataset = isCustom ? customDatasets[selectedDatasetId] : datasetState.dataset;
-  const metrics = useMemo(
-    () => (activeDataset ? deriveMetrics(activeDataset) : null),
-    [activeDataset],
-  );
-
-  const error = !isCustom
-    ? datasetState.error
-    : (datasets.length === 0 ? '表示できるデータセットがありません。フォルダを選択するか、ファイルを確認してください。' : null);
-  const loading = !isCustom ? datasetState.loading : false;
 
   // パネルヘッダー共通スタイル（横線付き）
   const panelHeaderStyle: React.CSSProperties = {
