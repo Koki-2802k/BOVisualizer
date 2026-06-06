@@ -52,7 +52,9 @@ const buildGpsValidPoints = (frames: RowingFrame[]): GpsPoint[] =>
         return null;
       }
       return {
-        frameNumber: numericValue(frame, 'number') ?? index,
+        // frameNumber はフレーム配列のインデックス（再生位置 uiFrame と一致させる）。
+        // CSVの 'number' 列は実測値で開始値が0でないため、再生位置と突き合わせると不一致になる。
+        frameNumber: index,
         latitude,
         longitude,
       };

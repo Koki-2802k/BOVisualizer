@@ -46,11 +46,30 @@ const nearestCurrentPoint = (gpsPoints: GpsPoint[], frameIndex: number): GpsPoin
   return nearest;
 };
 
-function ChangeView({ center }: { center: LatLngExpression }) {
+// 軌跡全体が見えるよう、GPSデータが変わったときだけ一度フィットする。
+// 毎フレーム再センタリングするとピンが常に中央に固定され、線上を動いて見えないため、
+// フレーム変化（frameIndex）には反応させない。
+function FitTrajectory({ path }: { path: LatLngExpression[] }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center);
-  }, [center, map]);
+    if (path.length === 0) {
+      return;
+    }
+    if (path.length === 1) {
+      map.setView(path[0], 19);
+      return;
+    }
+    const bounds = L.latLngBounds(path as [number, number][]);
+    if (!bounds.isValid()) {
+      return;
+    }
+    // 全点が同一座標の場合は単一点になるので setView でフォールバック
+    if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
+      map.setView(bounds.getCenter(), 19);
+      return;
+    }
+    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 19 });
+  }, [path, map]);
   return null;
 }
 
@@ -58,7 +77,8 @@ function RecenterButton({ center }: { center: LatLngExpression }) {
   const map = useMap();
 
   const handleRecenter = () => {
-    map.setView(center, map.getMaxZoom());
+    // 現在のズームを保ったまま、現在のピン位置へパンする
+    map.setView(center, map.getZoom());
   };
 
   return (
@@ -144,7 +164,7 @@ function RowingMap({ gpsPoints, frameIndex }: RowingMapProps) {
   return (
     <section aria-label="ローイング地図" style={mapSectionStyle}>
       <MapContainer center={center} zoom={19} scrollWheelZoom style={mapStyle}>
-        <ChangeView center={center} />
+        <FitTrajectory path={path} />
         <RecenterButton center={center} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
