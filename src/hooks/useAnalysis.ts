@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePlaybackStore } from '../store/playbackStore';
 import { detectStrokes } from '../utils/strokeDetect';
 import { deriveMetrics } from '../utils/metrics';
-import { parseRowingCsv } from '../utils/csvParser';
 import { getAnalysis } from '../domain/analysisRepository';
+import { loadAllManifestDatasets } from '../data/datasetLoader';
 import type { RowingFrame, DerivedMetrics } from '../types/rowing';
 import type { DatasetStrokeData } from '../components/StrokeMetricsTable';
 
@@ -19,7 +19,6 @@ export interface UseAnalysisResult {
 
 export function useAnalysis(datasetState: any): UseAnalysisResult {
   const {
-    selectedDatasetId,
     customDatasets,
     datasets,
     strokes,
@@ -27,14 +26,9 @@ export function useAnalysis(datasetState: any): UseAnalysisResult {
     setMaxFrame,
   } = usePlaybackStore();
 
-  const isCustom = selectedDatasetId in customDatasets;
-
   const frames = useMemo(() => {
-    if (isCustom) {
-      return customDatasets[selectedDatasetId]?.frames ?? [];
-    }
     return datasetState.dataset?.frames ?? [];
-  }, [isCustom, selectedDatasetId, customDatasets, datasetState.dataset]);
+  }, [datasetState.dataset]);
 
   // Sync maxFrame to store when frames length changes
   useEffect(() => {
@@ -68,27 +62,18 @@ export function useAnalysis(datasetState: any): UseAnalysisResult {
 
     let cancelled = false;
 
-    async function loadAllManifest() {
-      const results: Array<{ id: string; label: string; frames: RowingFrame[] }> = [];
-      for (const item of manifest) {
-        try {
-          const path = item.path.startsWith('/') ? item.path.slice(1) : item.path;
-          const response = await fetch(`${import.meta.env.BASE_URL}${path}`);
-          if (!response.ok) continue;
-          const csv = await response.text();
-          if (cancelled) return;
-          const parsed = parseRowingCsv(csv);
-          results.push({ id: item.id, label: item.label, frames: parsed.frames ?? [] });
-        } catch {
-          // ignore load failures
+    async function loadAll() {
+      try {
+        const results = await loadAllManifestDatasets(manifest);
+        if (!cancelled) {
+          setAllManifestFrames(results);
         }
-      }
-      if (!cancelled) {
-        setAllManifestFrames(results);
+      } catch {
+        // ignore load failures
       }
     }
 
-    void loadAllManifest();
+    void loadAll();
     return () => {
       cancelled = true;
     };
@@ -136,18 +121,14 @@ export function useAnalysis(datasetState: any): UseAnalysisResult {
     );
   }, [allDatasetsData, strokes]);
 
-  const activeDataset = isCustom ? customDatasets[selectedDatasetId] : datasetState.dataset;
+  const activeDataset = datasetState.dataset;
   const metrics = useMemo(
     () => (activeDataset ? deriveMetrics(activeDataset) : null),
     [activeDataset],
   );
 
-  const error = !isCustom
-    ? datasetState.error
-    : datasets.length === 0
-    ? '表示できるデータセットがありません。フォルダを選択するか、ファイルを確認してください。'
-    : null;
-  const loading = !isCustom ? datasetState.loading : false;
+  const error = datasetState.error || (datasets.length === 0 ? '表示できるデータセットがありません。フォルダを選択するか、ファイルを確認してください。' : null);
+  const loading = datasetState.loading;
 
   return {
     frames,
