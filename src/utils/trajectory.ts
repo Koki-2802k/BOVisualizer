@@ -1,5 +1,6 @@
 import { computeOarTipXY, extractZXYEulerYDeg, makeSensorQuaternion } from "./coordTransform";
 import type { RowingFrame } from "../types/rowing";
+import { getAnalysis } from "../domain/analysisRepository";
 
 export type TrajectoryPoint = {
   frameNumber: number;
@@ -44,6 +45,10 @@ const fallbackFromAngle = (angleDeg: number, side: "left" | "right"): { x: numbe
 };
 
 export const buildOarTrajectory = (frames: RowingFrame[]): TrajectoryPoint[] => {
+  return getAnalysis(frames).trajectory;
+};
+
+export const buildOarTrajectoryInternal = (frames: RowingFrame[]): TrajectoryPoint[] => {
   const isFiniteNum = (val: unknown): boolean =>
     (typeof val === "number" && Number.isFinite(val)) ||
     (typeof val === "string" && val.trim().length > 0 && !Number.isNaN(Number(val)) && Number.isFinite(Number(val)));

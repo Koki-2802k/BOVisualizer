@@ -6,6 +6,7 @@ import type {
   RowingFrame,
   TimePoint,
 } from '../types/rowing';
+import { getAnalysis } from '../domain/analysisRepository';
 
 const numericValue = (frame: RowingFrame, key: string): number | null => {
   const value = frame[key];
@@ -62,6 +63,10 @@ const buildGpsValidPoints = (frames: RowingFrame[]): GpsPoint[] =>
     .filter((point): point is GpsPoint => point !== null);
 
 export const deriveMetrics = (dataset: DatasetCsv): DerivedMetrics => {
+  return getAnalysis(dataset.frames).metrics;
+};
+
+export const deriveMetricsInternal = (dataset: DatasetCsv): DerivedMetrics => {
   const { frames } = dataset;
 
   return {

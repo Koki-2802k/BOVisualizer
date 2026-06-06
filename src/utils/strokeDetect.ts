@@ -22,7 +22,8 @@
 
 import type { RowingFrame } from '../types/rowing';
 import type { StrokePhase, PhaseSegment, StrokeSegment } from '../types/strokeDetect';
-import { buildOarTrajectory } from './trajectory';
+import { buildOarTrajectoryInternal, type TrajectoryPoint } from './trajectory';
+import { getAnalysis } from '../domain/analysisRepository';
 
 /**
  * フレーム列からストロークセグメント列を検出して返す。
@@ -65,20 +66,27 @@ function estimateFps(frames: RowingFrame[]): number {
  * フレーム列からストロークセグメント列を検出して返す。
  */
 export function detectStrokes(frames: RowingFrame[]): StrokeSegment[] {
+  return getAnalysis(frames).strokes;
+}
+
+/**
+ * 内部で軌跡データを再構築せず、指定された軌跡データを用いてストローク検出を行う内部関数。
+ */
+export function detectStrokesInternal(frames: RowingFrame[], trajectory?: TrajectoryPoint[]): StrokeSegment[] {
   if (frames.length < 10) return [];
 
   const fps = estimateFps(frames);
 
   // 軌跡データを構築して Z 軸座標（水面クロス -30cm）を基にしたタイミングをスキャンする
-  const trajectory = buildOarTrajectory(frames);
-  const N = trajectory.length;
+  const traj = trajectory || buildOarTrajectoryInternal(frames);
+  const N = traj.length;
 
   const isLeftIn = (tIdx: number) => {
-    const z = trajectory[tIdx]?.leftZ;
+    const z = traj[tIdx]?.leftZ;
     return z !== undefined && z !== null && z <= -30;
   };
   const isRightIn = (tIdx: number) => {
-    const z = trajectory[tIdx]?.rightZ;
+    const z = traj[tIdx]?.rightZ;
     return z !== undefined && z !== null && z <= -30;
   };
   const isInWater = (tIdx: number) => isLeftIn(tIdx) || isRightIn(tIdx);
