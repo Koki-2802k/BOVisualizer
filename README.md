@@ -105,7 +105,6 @@ BOVisualizer/
 プロジェクトのルートディレクトリで以下を実行します。
 
 ```bash
-cd /home/koki/BOVisualizer
 npm install
 ```
 
