@@ -6,7 +6,11 @@
   height: 100vh;
   overflow: hidden;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  /* 直接の子は PlaybackControls（ツールバー）と .dashboard-area の2つ。
+     行定義も2行にし、.dashboard-area を確定高さの 1fr 行へ確実に配置する。
+     （以前は auto auto 1fr の3行で、dashboard-area が auto 行に入り
+      高さがコンテンツ依存になっていたため拡大時に領域が潰れていた） */
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 6px;
   padding: 6px;
   /* 背景：トップ左からボトム右へ流れるような淡いグラデーションカラー */
@@ -317,6 +321,63 @@
 
 .timeseries-wrapper {
   grid-area: timeseries;
+}
+
+/* ----------------------------------------------------
+   パネル全画面フィーチャー（タブダブルクリックで拡大）
+
+   方式: グリッドのスパン操作はやめ、拡大パネルを
+   ダッシュボード領域（.dashboard-area）全体を覆う絶対配置
+   オーバーレイにする。これにより grid-template-areas の
+   名前付き配置とのカスケード衝突を完全に回避し、
+   幅・高さともに確実に全画面化される。
+   サイズが実際に変化するため、各グラフ・3D・地図の
+   ResizeObserver も正しくリサイズに追従する。
+   ---------------------------------------------------- */
+
+/* 拡大されたパネル: 親グリッドのフローから外し、
+   最も近い position 指定の祖先（.dashboard-area）を基準に
+   領域全体を覆う。.dashboard-grid は position:static のままなので
+   基準は .dashboard-area（position:relative, height:100%）になる。 */
+.panel.panel-featured {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  z-index: 50;
+}
+
+/* フィーチャー中は他のパネルを非表示 */
+.dashboard-grid.has-featured .panel:not(.panel-featured) {
+  display: none;
+}
+
+/* 右上の閉じる（×）ボタン */
+.panel-close-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #cbd5e1;
+  background: rgba(255, 255, 255, 0.95);
+  color: #334155;
+  font-size: 15px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 200;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  padding: 0;
+}
+
+.panel-close-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
 }
 
 /* マップの見出しタイトル */

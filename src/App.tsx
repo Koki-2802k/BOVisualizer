@@ -84,6 +84,7 @@ function App() {
   const [activeTimeseriesTab, setActiveTimeseriesTab] = useState<'chart' | 'metrics'>('chart');
   const [activeMapTab, setActiveMapTab] = useState<'map'>('map');
   const [activeSceneTab, setActiveSceneTab] = useState<'scene'>('scene');
+  const [expandedPanel, setExpandedPanel] = useState<string | null>(null);
 
   // メトリクステーブル用スナップショット（リロード時のみ更新）
   type MetricsSnapshot = {
@@ -125,6 +126,15 @@ function App() {
         document.activeElement?.tagName === 'SELECT' ||
         document.activeElement?.tagName === 'TEXTAREA'
       ) {
+        return;
+      }
+
+      // Esc でフィーチャーパネルを閉じる
+      if (event.code === 'Escape') {
+        if (expandedPanel) {
+          event.preventDefault();
+          setExpandedPanel(null);
+        }
         return;
       }
 
@@ -180,9 +190,16 @@ function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isPlaying, setIsPlaying, datasets, selectedDatasetId, setSelectedDatasetId, strokes, uiFrame, setSeekFrame]);
+  }, [isPlaying, setIsPlaying, datasets, selectedDatasetId, setSelectedDatasetId, strokes, uiFrame, setSeekFrame, expandedPanel, setExpandedPanel]);
 
   const currentFrame = frames[uiFrame] ?? null;
+
+  // パネル拡大・縮小ハンドラ
+  const handleExpandPanel = (panelId: string) => setExpandedPanel(panelId);
+  const handleCloseExpanded = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedPanel(null);
+  };
 
   // パネルヘッダー共通スタイル（横線付き）
   const panelHeaderStyle: React.CSSProperties = {
@@ -242,12 +259,15 @@ function App() {
         {loading ? (
           <div className="panel overlay-message loading">データ読み込み中...</div>
         ) : null}
-        <section className="dashboard-grid" aria-label="統合ダッシュボード">
-          <section className="panel scene-wrapper" aria-label="3Dシーン">
+        <section className={`dashboard-grid${expandedPanel ? ' has-featured' : ''}`} aria-label="統合ダッシュボード">
+          <section className={`panel scene-wrapper${expandedPanel === 'scene' ? ' panel-featured' : ''}`} aria-label="3Dシーン">
+            {expandedPanel === 'scene' && (
+              <button className="panel-close-btn" onClick={handleCloseExpanded} title="元の画面に戻す">✕</button>
+            )}
             <ErrorBoundary fallbackTitle="3D表示エラー">
               <Suspense fallback={<div className="panel overlay-message loading">3D表示を読み込み中...</div>}>
                 {/* 3Dシーンパネルヘッダー（横線付き・常時表示・タブ対応） */}
-                <div style={{ ...panelHeaderStyle, paddingBottom: 0 }}>
+                <div style={{ ...panelHeaderStyle, paddingBottom: 0 }} onDoubleClick={() => handleExpandPanel('scene')}>
                   <button
                     type="button"
                     className={`timeseries-tab-btn ${activeSceneTab === 'scene' ? 'active' : ''}`}
@@ -263,11 +283,14 @@ function App() {
             </ErrorBoundary>
           </section>
 
-          <section className="panel oar-wrapper" aria-label="オール軌跡">
+          <section className={`panel oar-wrapper${expandedPanel === 'oar' ? ' panel-featured' : ''}`} aria-label="オール軌跡">
+            {expandedPanel === 'oar' && (
+              <button className="panel-close-btn" onClick={handleCloseExpanded} title="元の画面に戻す">✕</button>
+            )}
             <ErrorBoundary fallbackTitle="軌跡表示エラー">
               <Suspense fallback={<div className="panel overlay-message loading">オール軌跡を読み込み中...</div>}>
                 {/* オール軌跡パネルヘッダー（左オール・右オールタブ切り替え） */}
-                <div style={{ ...panelHeaderStyle, paddingBottom: 0 }}>
+                <div style={{ ...panelHeaderStyle, paddingBottom: 0 }} onDoubleClick={() => handleExpandPanel('oar')}>
                   <button
                     type="button"
                     className={`timeseries-tab-btn ${oarSide === 'left' ? 'active' : ''}`}
@@ -283,16 +306,23 @@ function App() {
                     右オール
                   </button>
                 </div>
-                <OarTrajectoryChart frames={frames} currentIndex={uiFrame} />
+                <OarTrajectoryChart
+                  key={`oar-${expandedPanel ?? 'none'}`}
+                  frames={frames}
+                  currentIndex={uiFrame}
+                />
               </Suspense>
             </ErrorBoundary>
           </section>
 
-          <section className="panel map-wrapper" aria-label="地図">
+          <section className={`panel map-wrapper${expandedPanel === 'map' ? ' panel-featured' : ''}`} aria-label="地図">
+            {expandedPanel === 'map' && (
+              <button className="panel-close-btn" onClick={handleCloseExpanded} title="元の画面に戻す">✕</button>
+            )}
             <ErrorBoundary fallbackTitle="地図表示エラー">
               <Suspense fallback={<div className="panel overlay-message loading">地図を読み込み中...</div>}>
                 {/* GPS地図パネルヘッダー（横線付き・常時表示・タブ対応） */}
-                <div style={{ ...panelHeaderStyle, paddingBottom: 0 }}>
+                <div style={{ ...panelHeaderStyle, paddingBottom: 0 }} onDoubleClick={() => handleExpandPanel('map')}>
                   <button
                     type="button"
                     className={`timeseries-tab-btn ${activeMapTab === 'map' ? 'active' : ''}`}
@@ -303,6 +333,7 @@ function App() {
                 </div>
                 {activeMapTab === 'map' && (
                   <RowingMap
+                    key={`map-${expandedPanel ?? 'none'}`}
                     gpsPoints={metrics?.gpsValidPoints && metrics.gpsValidPoints.length > 0
                       ? metrics.gpsValidPoints
                       : []}
@@ -313,11 +344,14 @@ function App() {
             </ErrorBoundary>
           </section>
 
-          <section className="panel timeseries-wrapper" aria-label="時系列グラフ・メトリクス">
+          <section className={`panel timeseries-wrapper${expandedPanel === 'timeseries' ? ' panel-featured' : ''}`} aria-label="時系列グラフ・メトリクス">
+            {expandedPanel === 'timeseries' && (
+              <button className="panel-close-btn" onClick={handleCloseExpanded} title="元の画面に戻す">✕</button>
+            )}
             <ErrorBoundary fallbackTitle="表示エラー">
               <Suspense fallback={<div className="panel overlay-message loading">表示データを読み込み中...</div>}>
                 {/* 時系列パネルヘッダー（横線付き・常時表示） */}
-                <div style={{ ...panelHeaderStyle, paddingBottom: 0 }}>
+                <div style={{ ...panelHeaderStyle, paddingBottom: 0 }} onDoubleClick={() => handleExpandPanel('timeseries')}>
                   <button
                     type="button"
                     className={`timeseries-tab-btn ${activeTimeseriesTab === 'chart' ? 'active' : ''}`}
@@ -338,6 +372,7 @@ function App() {
 
                 {activeTimeseriesTab === 'chart' ? (
                   <TimeSeriesChart
+                    key={`ts-${expandedPanel ?? 'none'}`}
                     frames={frames}
                     currentIndex={uiFrame}
                     mode={graphMode}

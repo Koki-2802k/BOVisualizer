@@ -408,6 +408,8 @@ export default function OarTrajectoryChart({ frames, currentIndex }: Props) {
     }
 
     const observer = new ResizeObserver(() => {
+      // キャッシュを破棄して必ず再計測させる
+      canvasSizeRef.current = { w: 0, h: 0 };
       drawLatest();
     });
     observer.observe(wrapperRef.current);
