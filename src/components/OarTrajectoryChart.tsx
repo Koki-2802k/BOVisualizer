@@ -267,7 +267,7 @@ const drawCanvas = (
     drawText(ctx, "Direction", leftDirectionLabel.x, leftDirectionLabel.y, {
       align: "center",
       baseline: "middle",
-      size: 14,
+      size: 25,
       bold: true,
       color: "#111111",
     });
@@ -278,7 +278,7 @@ const drawCanvas = (
     drawText(ctx, "Direction", rightDirectionLabel.x, rightDirectionLabel.y, {
       align: "center",
       baseline: "middle",
-      size: 14,
+      size: 25,
       bold: true,
       color: "#111111",
     });
