@@ -11,6 +11,7 @@
 
 import type { NormalizedFrame } from '../schema';
 import type { TrajectoryPoint } from '../../utils/trajectory';
+import type { StrokeSegment } from '../../types/strokeDetect';
 
 /**
  * アナライザーへの入力。
@@ -21,6 +22,8 @@ export interface AnalysisInput {
   readonly normalizedFrames: NormalizedFrame[];
   /** オール軌跡（ストローク検出・位相分割に使用） */
   readonly trajectory: TrajectoryPoint[];
+  /** 検出されたストローク（追加のアナライザー用） */
+  readonly strokes?: StrokeSegment[];
 }
 
 /**

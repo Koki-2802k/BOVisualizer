@@ -51,8 +51,9 @@ export function getAnalysis(frames: RowingFrame[]): DatasetAnalysis {
 
   // 追加アナライザー（ANALYZERS レジストリ経由で自動実行）
   const extra = new Map<string, unknown>();
+  const inputWithStrokes = { ...input, strokes };
   for (const analyzer of ANALYZERS) {
-    extra.set(analyzer.id, analyzer.compute(input));
+    extra.set(analyzer.id, analyzer.compute(inputWithStrokes));
   }
 
   const analysis: DatasetAnalysis = {

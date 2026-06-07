@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import type { RowingFrame } from "../types/rowing";
+import type { StrokeSegment } from "../types/strokeDetect";
 import { buildOarTrajectory } from "../utils/trajectory";
+import { isIdealAngle } from "../utils/oarAngle";
 import { usePlaybackStore } from "../store/playbackStore";
 
 type Props = {
   frames: RowingFrame[];
   currentIndex: number;
+  /** ストローク区間情報。渡された場合、赤色プロットをドライブ区間内に限定する */
+  strokes?: StrokeSegment[];
 };
 
 type OarSide = "right" | "left";
@@ -37,11 +41,6 @@ const SYMBOL_HALF_LENGTH = 14;
 const SYMBOL_STROKE_WIDTH = 2.5;
 const HIGHLIGHT_HALF_LENGTH = 20;
 const HIGHLIGHT_STROKE_WIDTH = 4;
-
-const isIdealAngle = (angle: number): boolean => {
-  const com = Math.abs(Math.trunc(angle)) % 180;
-  return com > 40 && com < 140;
-};
 
 const formatAngle = (angle: number): string => {
   return `${angle.toFixed(1)}°`;
@@ -168,6 +167,8 @@ const drawCanvas = (
   currentIndex: number,
   currentAngle: number,
   oarSide: OarSide,
+  /** null のとき全フレームで isIdealAngle を適用（後方互換）。Set のときドライブ区間フレームのみ */
+  driveFrameSet: Set<number> | null,
 ) => {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) {
@@ -267,7 +268,7 @@ const drawCanvas = (
     drawText(ctx, "Direction", leftDirectionLabel.x, leftDirectionLabel.y, {
       align: "center",
       baseline: "middle",
-      size: 14,
+      size: 25,
       bold: true,
       color: "#111111",
     });
@@ -278,7 +279,7 @@ const drawCanvas = (
     drawText(ctx, "Direction", rightDirectionLabel.x, rightDirectionLabel.y, {
       align: "center",
       baseline: "middle",
-      size: 14,
+      size: 25,
       bold: true,
       color: "#111111",
     });
@@ -312,7 +313,14 @@ const drawCanvas = (
   points.slice(0, currentIndex + 1).forEach((point, index) => {
     const { x, y } = worldToCanvas(point.x, point.z);
     const isCurrent = index === currentIndex;
-    const strokeColor = isCurrent ? COLOR_BY_ANGLE.highlight : isIdealAngle(point.angle) ? COLOR_BY_ANGLE.ideal : COLOR_BY_ANGLE.normal;
+    // driveFrameSet が null → 後方互換で全区間に isIdealAngle を適用
+    // driveFrameSet が Set → ドライブ区間フレームのみ赤色対象
+    const isInDrive = driveFrameSet === null || driveFrameSet.has(index);
+    const strokeColor = isCurrent
+      ? COLOR_BY_ANGLE.highlight
+      : (isInDrive && isIdealAngle(point.angle))
+        ? COLOR_BY_ANGLE.ideal
+        : COLOR_BY_ANGLE.normal;
     const halfLength = isCurrent ? HIGHLIGHT_HALF_LENGTH : SYMBOL_HALF_LENGTH;
     const strokeWidth = isCurrent ? HIGHLIGHT_STROKE_WIDTH : SYMBOL_STROKE_WIDTH;
     drawRotatedSymbol(ctx, x, y, point.angle, strokeColor, halfLength, strokeWidth);
@@ -327,7 +335,7 @@ const drawCanvas = (
   });
 };
 
-export default function OarTrajectoryChart({ frames, currentIndex }: Props) {
+export default function OarTrajectoryChart({ frames, currentIndex, strokes }: Props) {
   const { oarSide } = usePlaybackStore();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -348,17 +356,37 @@ export default function OarTrajectoryChart({ frames, currentIndex }: Props) {
   );
   const safeIndex = Math.max(0, Math.min(currentIndex, points.length - 1));
   const currentAngle = activeData[safeIndex]?.angle ?? 0;
+
+  /** ドライブ区間（catch開始〜finish終了）のフレームインデックス集合。
+   * strokes が未指定なら null → 全フレームで理想角度を赤にする後方互換動作。 */
+  const driveFrameSet = useMemo<Set<number> | null>(() => {
+    if (!strokes) return null;
+    const set = new Set<number>();
+    for (const stroke of strokes) {
+      const catchPhase  = stroke.phases.find((p) => p.phase === 'catch');
+      const finishPhase = stroke.phases.find((p) => p.phase === 'finish');
+      const driveStart = catchPhase  ? catchPhase.startFrame   : stroke.startFrame;
+      const driveEnd   = finishPhase ? finishPhase.endFrame    : stroke.endFrame;
+      for (let i = driveStart; i <= driveEnd; i++) {
+        set.add(i);
+      }
+    }
+    return set;
+  }, [strokes]);
+
   const latestRenderStateRef = useRef({
     activeData,
     safeIndex,
     currentAngle,
     oarSide,
+    driveFrameSet,
   });
   latestRenderStateRef.current = {
     activeData,
     safeIndex,
     currentAngle,
     oarSide,
+    driveFrameSet,
   };
 
   const cancelScheduledDraw = () => {
@@ -389,9 +417,9 @@ export default function OarTrajectoryChart({ frames, currentIndex }: Props) {
       return;
     }
 
-    const { activeData: latestActiveData, safeIndex: latestSafeIndex, currentAngle: latestCurrentAngle, oarSide: latestOarSide } = latestRenderStateRef.current;
+    const { activeData: latestActiveData, safeIndex: latestSafeIndex, currentAngle: latestCurrentAngle, oarSide: latestOarSide, driveFrameSet: latestDriveFrameSet } = latestRenderStateRef.current;
     resizeCanvas(canvas, box, canvasSizeRef);
-    drawCanvas(canvas, box, latestActiveData, latestSafeIndex, latestCurrentAngle, latestOarSide);
+    drawCanvas(canvas, box, latestActiveData, latestSafeIndex, latestCurrentAngle, latestOarSide, latestDriveFrameSet);
   };
 
   useEffect(() => {
@@ -434,8 +462,8 @@ export default function OarTrajectoryChart({ frames, currentIndex }: Props) {
     }
 
     resizeCanvas(canvas, box, canvasSizeRef);
-    drawCanvas(canvas, box, activeData, safeIndex, currentAngle, oarSide);
-  }, [activeData, currentAngle, safeIndex, oarSide]);
+    drawCanvas(canvas, box, activeData, safeIndex, currentAngle, oarSide, driveFrameSet);
+  }, [activeData, currentAngle, safeIndex, oarSide, driveFrameSet]);
 
   if (!hasTrajectory) {
     return (
