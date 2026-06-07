@@ -555,7 +555,7 @@ export default function PlaybackControls({
         {isPlaying ? '停止' : '開始'}
       </button>
 
-      <label>
+      <label className="seek-label">
         フレーム
         <input
           type="range"

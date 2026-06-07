@@ -187,10 +187,73 @@
   font-family: inherit;
 }
 
+.controls label.seek-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
 /* スライダー（シークバー） */
 .controls input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
   width: min(320px, 24vw);
-  min-height: 30px;
+  height: 30px;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+/* トラック（バー）の太さを調整 */
+.controls input[type='range']::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 8px;
+  background: #cbd5e1;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.controls input[type='range']::-moz-range-track {
+  width: 100%;
+  height: 8px;
+  background: #cbd5e1;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+/* つまみ（サム）のスタイリング */
+.controls input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -6px; /* (8px / 2) - (20px / 2) = -6px */
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+  transition: transform 0.1s ease, background 0.1s ease;
+}
+
+.controls input[type='range']::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  background: #1d4ed8;
+}
+
+.controls input[type='range']::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #2563eb;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.1s ease;
+}
+
+.controls input[type='range']::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  background: #1d4ed8;
 }
 
 /* ボタン共通（開始、フォルダ選択など） */
