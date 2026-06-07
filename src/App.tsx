@@ -391,6 +391,7 @@ function App() {
                       strokes={strokes}
                       analysisMode={analysisMode}
                       showStrokePhases={showStrokePhases}
+                      isExpanded={expandedPanel === 'timeseries'}
                     />
                   ) : (
                     <StrokeMetricsTable

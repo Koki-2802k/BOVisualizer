@@ -13,6 +13,7 @@ type Props = {
   /** 解析モード有効時に位相帯・凡例を表示する */
   analysisMode?: boolean;
   showStrokePhases?: boolean;
+  isExpanded?: boolean;
 };
 
 type CanvasBox = {
@@ -227,6 +228,7 @@ const drawTimeSeriesCanvas = (
   strokes: StrokeSegment[] = [],
   analysisMode: boolean = false,
   showStrokePhases: boolean = true,
+  isExpanded: boolean = false,
 ) => {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) {
@@ -355,22 +357,23 @@ const drawTimeSeriesCanvas = (
         if (showStrokePhases && (seg.phase === 'catch' || seg.phase === 'finish')) {
           ctx.save();
           // 上部にシンボルと文字マーカーを表示
-          const symbolY = PADDING.top + 8;
+          const symbolSize = isExpanded ? 8 : 4;
+          const symbolY = PADDING.top + (isExpanded ? 16 : 8);
           ctx.fillStyle = seg.phase === 'catch' ? '#2563eb' : '#ea580c';
           
           // 逆三角形を描画
           ctx.beginPath();
-          ctx.moveTo(x1 - 4, symbolY - 4);
-          ctx.lineTo(x1 + 4, symbolY - 4);
-          ctx.lineTo(x1, symbolY + 2);
+          ctx.moveTo(x1 - symbolSize, symbolY - symbolSize);
+          ctx.lineTo(x1 + symbolSize, symbolY - symbolSize);
+          ctx.lineTo(x1, symbolY + (isExpanded ? 4 : 2));
           ctx.closePath();
           ctx.fill();
 
           // ラベル文字（C / F）
-          drawText(ctx, seg.phase === 'catch' ? 'C' : 'F', x1, symbolY - 8, {
+          drawText(ctx, seg.phase === 'catch' ? 'C' : 'F', x1, symbolY - (isExpanded ? 12 : 8), {
             align: 'center',
             baseline: 'bottom',
-            size: 16,
+            size: isExpanded ? 32 : 16,
             bold: true,
             color: seg.phase === 'catch' ? '#1d4ed8' : '#c2410c'
           });
@@ -380,12 +383,12 @@ const drawTimeSeriesCanvas = (
         // 凡例に代わる見せ方の工夫: ドライブ/リカバリー区間の上部に横線とテキストラベルを静かに表示
         if (showStrokePhases && (seg.phase === 'drive' || seg.phase === 'recovery')) {
           const midX = x1 + bandWidth / 2;
-          const labelY = PADDING.top + 14;
+          const labelY = PADDING.top + (isExpanded ? 24 : 14);
           const isDrive = seg.phase === 'drive';
 
           ctx.save();
           ctx.strokeStyle = isDrive ? 'rgba(34,197,94,0.4)' : 'rgba(148,163,184,0.4)';
-          ctx.lineWidth = 2;
+          ctx.lineWidth = isExpanded ? 4 : 2;
           ctx.beginPath();
           ctx.moveTo(x1 + 6, labelY);
           ctx.lineTo(x2 - 6, labelY);
@@ -394,18 +397,23 @@ const drawTimeSeriesCanvas = (
           const labelText = isDrive ? 'Drive' : 'Recovery';
           const labelColor = isDrive ? '#16a34a' : '#64748b';
           
-          ctx.font = 'bold 16px Arial, sans-serif';
+          ctx.font = `bold ${isExpanded ? 32 : 16}px Arial, sans-serif`;
           const textWidth = ctx.measureText(labelText).width;
-          const minWidthForLabel = textWidth + 16;
+          const minWidthForLabel = textWidth + (isExpanded ? 32 : 16);
 
           if (bandWidth > minWidthForLabel) {
             ctx.fillStyle = '#ffffff';
-            ctx.fillRect(midX - textWidth / 2 - 6, labelY - 10, textWidth + 12, 20);
+            ctx.fillRect(
+              midX - textWidth / 2 - (isExpanded ? 12 : 6),
+              labelY - (isExpanded ? 20 : 10),
+              textWidth + (isExpanded ? 24 : 12),
+              isExpanded ? 40 : 20
+            );
 
             drawText(ctx, labelText, midX, labelY, {
               align: 'center',
               baseline: 'middle',
-              size: 16,
+              size: isExpanded ? 32 : 16,
               bold: true,
               color: labelColor
             });
@@ -527,7 +535,8 @@ export default function TimeSeriesChart({
   mode,
   strokes = [],
   analysisMode = false,
-  showStrokePhases = true
+  showStrokePhases = true,
+  isExpanded = false
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -544,6 +553,7 @@ export default function TimeSeriesChart({
     strokes,
     analysisMode,
     showStrokePhases,
+    isExpanded,
   });
   latestRenderStateRef.current = {
     points,
@@ -553,6 +563,7 @@ export default function TimeSeriesChart({
     strokes,
     analysisMode,
     showStrokePhases,
+    isExpanded,
   };
 
   const cancelScheduledDraw = () => {
@@ -591,6 +602,7 @@ export default function TimeSeriesChart({
       strokes: latestStrokes,
       analysisMode: latestAnalysisMode,
       showStrokePhases: latestShowStrokePhases,
+      isExpanded: latestIsExpanded,
     } = latestRenderStateRef.current;
     resizeCanvas(canvas, box, canvasSizeRef);
     drawTimeSeriesCanvas(
@@ -603,6 +615,7 @@ export default function TimeSeriesChart({
       latestStrokes,
       latestAnalysisMode,
       latestShowStrokePhases,
+      latestIsExpanded,
     );
   };
 
@@ -656,8 +669,9 @@ export default function TimeSeriesChart({
       strokes,
       analysisMode,
       showStrokePhases,
+      isExpanded,
     );
-  }, [points, safeIndex, mode, yDomain, strokes, analysisMode, showStrokePhases]);
+  }, [points, safeIndex, mode, yDomain, strokes, analysisMode, showStrokePhases, isExpanded]);
 
   if (frames.length === 0 || points.length === 0) {
     return (

@@ -14,6 +14,7 @@
  */
 
 import type { Analyzer, AnalysisInput } from './types';
+import type { StrokeSegment } from '../../types/strokeDetect';
 
 // ───────────────────────────────────────────────────────────────────────────
 // 型定義
@@ -109,8 +110,8 @@ export const symmetryAnalyzer: Analyzer<SymmetryResult> = {
   id: 'symmetry',
   label: '左右対称性分析',
 
-  compute({ normalizedFrames, trajectory, strokes }: AnalysisInput): SymmetryResult {
-    const perStroke: StrokeSymmetry[] = strokes.map((stroke) => {
+  compute({ normalizedFrames, trajectory, strokes = [] }: AnalysisInput): SymmetryResult {
+    const perStroke: StrokeSymmetry[] = strokes.map((stroke: StrokeSegment) => {
       const { strokeIndex, startFrame, phases } = stroke;
 
       // キャッシュ済み trajectory からストローク範囲のデータを取得

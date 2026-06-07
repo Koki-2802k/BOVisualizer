@@ -429,8 +429,8 @@ export default function StrokeMetricsTable({
           }}
         >
           <div>
-            <div style={{ fontSize: isExpanded ? '13px' : '11px', color: '#64748b', fontWeight: 600 }}>キャッチ角</div>
-            <div style={{ fontSize: isExpanded ? '16px' : '13px', fontWeight: 700, color: '#3b82f6', marginTop: '2px' }}>
+            <div style={{ fontSize: isExpanded ? '16px' : '11px', color: '#64748b', fontWeight: 600 }}>キャッチ角</div>
+            <div style={{ fontSize: isExpanded ? '20px' : '13px', fontWeight: 700, color: '#3b82f6', marginTop: '2px' }}>
               左: {activeRow?.leftCatch.toFixed(1)}° / 右: {activeRow?.rightCatch.toFixed(1)}°
             </div>
           </div>
@@ -453,8 +453,8 @@ export default function StrokeMetricsTable({
           }}
         >
           <div>
-            <div style={{ fontSize: isExpanded ? '13px' : '11px', color: '#64748b', fontWeight: 600 }}>フィニッシュ角</div>
-            <div style={{ fontSize: isExpanded ? '16px' : '13px', fontWeight: 700, color: '#ea580c', marginTop: '2px' }}>
+            <div style={{ fontSize: isExpanded ? '16px' : '11px', color: '#64748b', fontWeight: 600 }}>フィニッシュ角</div>
+            <div style={{ fontSize: isExpanded ? '20px' : '13px', fontWeight: 700, color: '#ea580c', marginTop: '2px' }}>
               左: {activeRow?.leftFinish.toFixed(1)}° / 右: {activeRow?.rightFinish.toFixed(1)}°
             </div>
           </div>
@@ -477,8 +477,8 @@ export default function StrokeMetricsTable({
           }}
         >
           <div>
-            <div style={{ fontSize: isExpanded ? '13px' : '11px', color: '#64748b', fontWeight: 600 }}>Δ角度差（キャッチ / フィニッシュ）</div>
-            <div style={{ fontSize: isExpanded ? '16px' : '13px', fontWeight: 700, marginTop: '2px' }}>
+            <div style={{ fontSize: isExpanded ? '16px' : '11px', color: '#64748b', fontWeight: 600 }}>Δ角度差（キャッチ / フィニッシュ）</div>
+            <div style={{ fontSize: isExpanded ? '20px' : '13px', fontWeight: 700, marginTop: '2px' }}>
               <span style={{ color: '#7c3aed' }}>
                 ΔCatch: {activeRow != null ? `${activeRow.catchAngleDiff >= 0 ? '+' : ''}${activeRow.catchAngleDiff.toFixed(1)}°` : '--'}
               </span>
@@ -533,14 +533,14 @@ export default function StrokeMetricsTable({
               flexShrink: 0,
             }}
           >
-            <tr style={{ height: '32px' }}>
+            <tr style={{ height: isExpanded ? '64px' : '32px' }}>
               <th
                 rowSpan={2}
                 style={{
-                  padding: '6px 8px',
+                  padding: isExpanded ? '12px 16px' : '6px 8px',
                   fontWeight: 700,
                   borderRight: '1px solid #cbd5e1',
-                  fontSize: '14px',
+                  fontSize: isExpanded ? '28px' : '14px',
                 }}
               >
                 #
@@ -548,12 +548,12 @@ export default function StrokeMetricsTable({
               <th
                 colSpan={2}
                 style={{
-                  padding: '4px 8px',
+                  padding: isExpanded ? '8px 16px' : '4px 8px',
                   fontWeight: 700,
                   background: 'rgba(37,99,235,0.06)',
                   borderBottom: '1px solid #cbd5e1',
                   borderRight: '1px solid #cbd5e1',
-                  fontSize: '14px',
+                  fontSize: isExpanded ? '28px' : '14px',
                 }}
               >
                 左オール
@@ -561,12 +561,12 @@ export default function StrokeMetricsTable({
               <th
                 colSpan={2}
                 style={{
-                  padding: '4px 8px',
+                  padding: isExpanded ? '8px 16px' : '4px 8px',
                   fontWeight: 700,
                   background: 'rgba(22,163,74,0.05)',
                   borderBottom: '1px solid #cbd5e1',
                   borderRight: '1px solid #cbd5e1',
-                  fontSize: '14px',
+                  fontSize: isExpanded ? '28px' : '14px',
                 }}
               >
                 右オール
@@ -574,12 +574,12 @@ export default function StrokeMetricsTable({
               <th
                 colSpan={2}
                 style={{
-                  padding: '4px 8px',
+                  padding: isExpanded ? '8px 16px' : '4px 8px',
                   fontWeight: 700,
                   background: 'rgba(124,58,237,0.06)',
                   borderBottom: '1px solid #cbd5e1',
                   borderRight: '1px solid #cbd5e1',
-                  fontSize: '14px',
+                  fontSize: isExpanded ? '28px' : '14px',
                   color: '#5b21b6',
                 }}
                 title="左右差 = leftAngle + rightAngle（右センサー反転補正済み）。対称なら≈0°"
@@ -588,19 +588,24 @@ export default function StrokeMetricsTable({
               </th>
               <th
                 rowSpan={2}
-                style={{ padding: '6px 8px', fontWeight: 700, fontSize: '14px', color: '#16a34a' }}
+                style={{
+                  padding: isExpanded ? '12px 16px' : '6px 8px',
+                  fontWeight: 700,
+                  fontSize: isExpanded ? '28px' : '14px',
+                  color: '#16a34a',
+                }}
                 title="ドライブ期間中に良い角度（赤色プロット条件）だったフレームの割合"
               >
                 良角度比 (%)
               </th>
             </tr>
-            <tr style={{ background: '#f8fafc', height: '24px' }}>
+            <tr style={{ background: '#f8fafc', height: isExpanded ? '48px' : '24px' }}>
               <th
                 style={{
-                  padding: '2px 8px',
+                  padding: isExpanded ? '4px 16px' : '2px 8px',
                   fontWeight: 600,
                   borderRight: '1px solid #e2e8f0',
-                  fontSize: '12px',
+                  fontSize: isExpanded ? '24px' : '12px',
                   color: '#475569',
                 }}
               >
@@ -608,10 +613,10 @@ export default function StrokeMetricsTable({
               </th>
               <th
                 style={{
-                  padding: '2px 8px',
+                  padding: isExpanded ? '4px 16px' : '2px 8px',
                   fontWeight: 600,
                   borderRight: '1px solid #cbd5e1',
-                  fontSize: '12px',
+                  fontSize: isExpanded ? '24px' : '12px',
                   color: '#475569',
                 }}
               >
@@ -619,10 +624,10 @@ export default function StrokeMetricsTable({
               </th>
               <th
                 style={{
-                  padding: '2px 8px',
+                  padding: isExpanded ? '4px 16px' : '2px 8px',
                   fontWeight: 600,
                   borderRight: '1px solid #e2e8f0',
-                  fontSize: '12px',
+                  fontSize: isExpanded ? '24px' : '12px',
                   color: '#475569',
                 }}
               >
@@ -630,10 +635,10 @@ export default function StrokeMetricsTable({
               </th>
               <th
                 style={{
-                  padding: '2px 8px',
+                  padding: isExpanded ? '4px 16px' : '2px 8px',
                   fontWeight: 600,
                   borderRight: '1px solid #cbd5e1',
-                  fontSize: '12px',
+                  fontSize: isExpanded ? '24px' : '12px',
                   color: '#475569',
                 }}
               >
@@ -641,10 +646,10 @@ export default function StrokeMetricsTable({
               </th>
               <th
                 style={{
-                  padding: '2px 8px',
+                  padding: isExpanded ? '4px 16px' : '2px 8px',
                   fontWeight: 600,
                   borderRight: '1px solid #e2e8f0',
-                  fontSize: '12px',
+                  fontSize: isExpanded ? '24px' : '12px',
                   color: '#7c3aed',
                 }}
                 title="Δキャッチ角 = leftCatch + rightCatch。対称≈0、正=左が前方寄り"
@@ -653,10 +658,10 @@ export default function StrokeMetricsTable({
               </th>
               <th
                 style={{
-                  padding: '2px 8px',
+                  padding: isExpanded ? '4px 16px' : '2px 8px',
                   fontWeight: 600,
                   borderRight: '1px solid #cbd5e1',
-                  fontSize: '12px',
+                  fontSize: isExpanded ? '24px' : '12px',
                   color: '#0891b2',
                 }}
                 title="Δフィニッシュ角 = leftFinish + rightFinish。対称≈0、負=左が後方寄り"
@@ -675,7 +680,7 @@ export default function StrokeMetricsTable({
                   >
                     <td
                       style={{
-                        padding: '8px',
+                        padding: isExpanded ? '16px' : '8px',
                         background: '#fafafa',
                         borderRight: '1px solid #e2e8f0',
                       }}
@@ -685,7 +690,7 @@ export default function StrokeMetricsTable({
                     <td
                       colSpan={2}
                       style={{
-                        padding: '8px',
+                        padding: isExpanded ? '16px' : '8px',
                         background: '#fafafa',
                         borderRight: '1px solid #cbd5e1',
                       }}
@@ -695,7 +700,7 @@ export default function StrokeMetricsTable({
                     <td
                       colSpan={2}
                       style={{
-                        padding: '8px',
+                        padding: isExpanded ? '16px' : '8px',
                         background: '#fafafa',
                         borderRight: '1px solid #cbd5e1',
                       }}
@@ -705,14 +710,14 @@ export default function StrokeMetricsTable({
                     <td
                       colSpan={2}
                       style={{
-                        padding: '8px',
+                        padding: isExpanded ? '16px' : '8px',
                         background: '#fafafa',
                         borderRight: '1px solid #cbd5e1',
                       }}
                     >
                       &nbsp;
                     </td>
-                    <td style={{ padding: '8px', background: '#fafafa' }}>&nbsp;</td>
+                    <td style={{ padding: isExpanded ? '16px' : '8px', background: '#fafafa' }}>&nbsp;</td>
                   </tr>
                 );
               }
@@ -753,11 +758,11 @@ export default function StrokeMetricsTable({
                 >
                   <td
                     style={{
-                      padding: '8px',
+                      padding: isExpanded ? '16px' : '8px',
                       fontWeight: 700,
                       borderRight: '1px solid #e2e8f0',
                       background: '#f8fafc',
-                      fontSize: '16px',
+                      fontSize: isExpanded ? '32px' : '16px',
                     }}
                   >
                     {row.strokeIndex + 1}
@@ -765,22 +770,22 @@ export default function StrokeMetricsTable({
                   {/* 左オール */}
                   <td
                     style={{
-                      padding: '8px',
+                      padding: isExpanded ? '16px' : '8px',
                       borderRight: '1px solid #e2e8f0',
                       color: '#2563eb',
                       fontWeight: 600,
-                      fontSize: '18px',
+                      fontSize: isExpanded ? '36px' : '18px',
                     }}
                   >
                     {row.leftCatch.toFixed(1)}°
                   </td>
                   <td
                     style={{
-                      padding: '8px',
+                      padding: isExpanded ? '16px' : '8px',
                       borderRight: '1px solid #cbd5e1',
                       color: '#ea580c',
                       fontWeight: 600,
-                      fontSize: '18px',
+                      fontSize: isExpanded ? '36px' : '18px',
                     }}
                   >
                     {row.leftFinish.toFixed(1)}°
@@ -788,22 +793,22 @@ export default function StrokeMetricsTable({
                   {/* 右オール */}
                   <td
                     style={{
-                      padding: '8px',
+                      padding: isExpanded ? '16px' : '8px',
                       borderRight: '1px solid #e2e8f0',
                       color: '#2563eb',
                       fontWeight: 600,
-                      fontSize: '18px',
+                      fontSize: isExpanded ? '36px' : '18px',
                     }}
                   >
                     {row.rightCatch.toFixed(1)}°
                   </td>
                   <td
                     style={{
-                      padding: '8px',
+                      padding: isExpanded ? '16px' : '8px',
                       borderRight: '1px solid #cbd5e1',
                       color: '#ea580c',
                       fontWeight: 600,
-                      fontSize: '18px',
+                      fontSize: isExpanded ? '36px' : '18px',
                     }}
                   >
                     {row.rightFinish.toFixed(1)}°
@@ -811,11 +816,11 @@ export default function StrokeMetricsTable({
                   {/* Δ角度差 */}
                   <td
                     style={{
-                      padding: '8px',
+                      padding: isExpanded ? '16px' : '8px',
                       borderRight: '1px solid #e2e8f0',
                       fontWeight: 700,
                       color: Math.abs(row.catchAngleDiff) < 3 ? '#16a34a' : Math.abs(row.catchAngleDiff) < 8 ? '#d97706' : '#dc2626',
-                      fontSize: '18px',
+                      fontSize: isExpanded ? '36px' : '18px',
                     }}
                     title="Δキャッチ角 = leftCatch + rightCatch（対称≈0°）"
                   >
@@ -823,11 +828,11 @@ export default function StrokeMetricsTable({
                   </td>
                   <td
                     style={{
-                      padding: '8px',
+                      padding: isExpanded ? '16px' : '8px',
                       borderRight: '1px solid #cbd5e1',
                       fontWeight: 700,
                       color: Math.abs(row.finishAngleDiff) < 3 ? '#16a34a' : Math.abs(row.finishAngleDiff) < 8 ? '#d97706' : '#dc2626',
-                      fontSize: '18px',
+                      fontSize: isExpanded ? '36px' : '18px',
                     }}
                     title="Δフィニッシュ角 = leftFinish + rightFinish（対称≈0°）"
                   >
@@ -836,13 +841,13 @@ export default function StrokeMetricsTable({
                   {/* 良角度比 */}
                   <td
                     style={{
-                      padding: '8px',
+                      padding: isExpanded ? '16px' : '8px',
                       fontWeight: 600,
-                      fontSize: '15px',
+                      fontSize: isExpanded ? '30px' : '15px',
                       textAlign: 'center',
                     }}
                   >
-                    <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'row', gap: isExpanded ? '16px' : '8px', justifyContent: 'center', alignItems: 'center' }}>
                       <span style={{
                         color: row.leftIdealRatio >= 80 ? '#16a34a' : row.leftIdealRatio >= 60 ? '#d97706' : '#dc2626',
                         fontWeight: 700,
@@ -871,8 +876,8 @@ export default function StrokeMetricsTable({
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          gap: '16px',
-          margin: '8px 0 2px',
+          gap: isExpanded ? '32px' : '16px',
+          margin: isExpanded ? '16px 0 8px' : '8px 0 2px',
           flexShrink: 0,
         }}
       >
@@ -881,20 +886,20 @@ export default function StrokeMetricsTable({
           onClick={handlePrevPage}
           disabled={currentPage === 1}
           style={{
-            padding: '6px 16px',
-            borderRadius: '6px',
+            padding: isExpanded ? '12px 32px' : '6px 16px',
+            borderRadius: isExpanded ? '12px' : '6px',
             border: '1px solid #cbd5e1',
             background: currentPage === 1 ? '#f1f5f9' : '#ffffff',
             color: currentPage === 1 ? '#94a3b8' : '#0f172a',
             cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
             fontWeight: 600,
-            fontSize: '14px',
+            fontSize: isExpanded ? '28px' : '14px',
             transition: 'all 0.15s ease',
           }}
         >
           前へ
         </button>
-        <span style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>
+        <span style={{ fontSize: isExpanded ? '28px' : '14px', fontWeight: 600, color: '#334155' }}>
           {currentPage} / {totalPages} ページ (全 {rows.length} ストローク)
         </span>
         <button
@@ -902,14 +907,14 @@ export default function StrokeMetricsTable({
           onClick={handleNextPage}
           disabled={currentPage === totalPages}
           style={{
-            padding: '6px 16px',
-            borderRadius: '6px',
+            padding: isExpanded ? '12px 32px' : '6px 16px',
+            borderRadius: isExpanded ? '12px' : '6px',
             border: '1px solid #cbd5e1',
             background: currentPage === totalPages ? '#f1f5f9' : '#ffffff',
             color: currentPage === totalPages ? '#94a3b8' : '#0f172a',
             cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
             fontWeight: 600,
-            fontSize: '14px',
+            fontSize: isExpanded ? '28px' : '14px',
             transition: 'all 0.15s ease',
           }}
         >

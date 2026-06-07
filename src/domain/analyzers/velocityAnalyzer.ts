@@ -11,6 +11,7 @@
 
 import type { Analyzer, AnalysisInput } from './types';
 import type { NormalizedFrame } from '../schema';
+import type { StrokeSegment } from '../../types/strokeDetect';
 
 // ───────────────────────────────────────────────────────────────────────────
 // 型定義
@@ -105,8 +106,8 @@ export const velocityAnalyzer: Analyzer<VelocityResult> = {
   id: 'velocity',
   label: '艇速周期変動解析',
 
-  compute({ normalizedFrames, strokes }: AnalysisInput): VelocityResult {
-    const perStroke: StrokeVelocity[] = strokes.map((stroke) => {
+  compute({ normalizedFrames, strokes = [] }: AnalysisInput): VelocityResult {
+    const perStroke: StrokeVelocity[] = strokes.map((stroke: StrokeSegment) => {
       const drive      = stroke.phases.find((p) => p.phase === 'drive');
       const catchPhase = stroke.phases.find((p) => p.phase === 'catch');
       const finishPhase = stroke.phases.find((p) => p.phase === 'finish');
