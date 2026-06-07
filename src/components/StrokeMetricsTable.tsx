@@ -169,10 +169,20 @@ type StrokeMetricRow = {
   endFrame: number;
   leftCatch: number;
   leftFinish: number;
-  leftSweep: number;
   rightCatch: number;
   rightFinish: number;
-  rightSweep: number;
+  /**
+   * キャッチ角度差 = leftCatch + rightCatch
+   * 右オールセンサーは物理的に左と反転しているため、
+   * 対称ストロークでは rightAngle ≈ -leftAngle となる。
+   * この和が 0 ≈ 対称、正 = 左キャッチが艇前方寄り、負 = 右が前方寄り。
+   */
+  catchAngleDiff: number;
+  /**
+   * フィニッシュ角度差 = leftFinish + rightFinish
+   * 対称なら ≈ 0。正 = 右フィニッシュが艇後方寄り、負 = 左が後方寄り。
+   */
+  finishAngleDiff: number;
   driveFrames: number;
   recoveryFrames: number;
   drivePct: number;
@@ -236,8 +246,11 @@ function computeStrokeRow(
     rightFinish = rightCatchAvg > rightFinishAvg ? minRight : maxRight;
   }
 
-  const leftSweep = Math.abs(leftCatch - leftFinish);
-  const rightSweep = Math.abs(rightCatch - rightFinish);
+  // 右オールセンサーは物理的に左と反転しているため、対称なら rightAngle ≈ -leftAngle。
+  // 差を (left - right) で計算すると対称でも大きな値になる (例: +60° - (-60°) = 120°)。
+  // (left + right) を使うことで対称なら ≈ 0、非対称の度合いが正しく表れる。
+  const catchAngleDiff = leftCatch + rightCatch;
+  const finishAngleDiff = leftFinish + rightFinish;
 
   const driveStart = catchSeg ? catchSeg.startFrame : start;
   const driveEnd = finishSeg ? finishSeg.endFrame : end;
@@ -254,10 +267,10 @@ function computeStrokeRow(
     endFrame: end,
     leftCatch,
     leftFinish,
-    leftSweep,
     rightCatch,
     rightFinish,
-    rightSweep,
+    catchAngleDiff,
+    finishAngleDiff,
     driveFrames,
     recoveryFrames,
     drivePct,
@@ -318,8 +331,8 @@ export default function StrokeMetricsTable({
       rightCatch: rows.map((r) => r.rightCatch),
       leftFinish: rows.map((r) => r.leftFinish),
       rightFinish: rows.map((r) => r.rightFinish),
-      leftSweep: rows.map((r) => r.leftSweep),
-      rightSweep: rows.map((r) => r.rightSweep),
+      catchAngleDiff: rows.map((r) => r.catchAngleDiff),
+      finishAngleDiff: rows.map((r) => r.finishAngleDiff),
     }),
     [rows],
   );
@@ -465,13 +478,19 @@ export default function StrokeMetricsTable({
           }}
         >
           <div>
-            <div style={{ fontSize: isExpanded ? '13px' : '11px', color: '#64748b', fontWeight: 600 }}>総スイープ角</div>
-            <div style={{ fontSize: isExpanded ? '16px' : '13px', fontWeight: 700, color: '#16a34a', marginTop: '2px' }}>
-              左: {activeRow?.leftSweep.toFixed(1)}° / 右: {activeRow?.rightSweep.toFixed(1)}°
+            <div style={{ fontSize: isExpanded ? '13px' : '11px', color: '#64748b', fontWeight: 600 }}>Δ角度差（キャッチ / フィニッシュ）</div>
+            <div style={{ fontSize: isExpanded ? '16px' : '13px', fontWeight: 700, marginTop: '2px' }}>
+              <span style={{ color: '#7c3aed' }}>
+                ΔCatch: {activeRow != null ? `${activeRow.catchAngleDiff >= 0 ? '+' : ''}${activeRow.catchAngleDiff.toFixed(1)}°` : '--'}
+              </span>
+              <span style={{ color: '#64748b', margin: '0 6px' }}>/</span>
+              <span style={{ color: '#0891b2' }}>
+                ΔFinish: {activeRow != null ? `${activeRow.finishAngleDiff >= 0 ? '+' : ''}${activeRow.finishAngleDiff.toFixed(1)}°` : '--'}
+              </span>
             </div>
           </div>
           <div style={{ paddingLeft: '8px' }}>
-            <Sparkline values={trends.leftSweep} strokeColor="#16a34a" width={isExpanded ? 320 : 180} height={isExpanded ? 56 : 42} />
+            <Sparkline values={trends.catchAngleDiff} strokeColor="#7c3aed" width={isExpanded ? 320 : 180} height={isExpanded ? 56 : 42} />
           </div>
         </div>
       </div>
@@ -528,7 +547,7 @@ export default function StrokeMetricsTable({
                 #
               </th>
               <th
-                colSpan={3}
+                colSpan={2}
                 style={{
                   padding: '4px 8px',
                   fontWeight: 700,
@@ -541,7 +560,7 @@ export default function StrokeMetricsTable({
                 左オール
               </th>
               <th
-                colSpan={3}
+                colSpan={2}
                 style={{
                   padding: '4px 8px',
                   fontWeight: 700,
@@ -552,6 +571,21 @@ export default function StrokeMetricsTable({
                 }}
               >
                 右オール
+              </th>
+              <th
+                colSpan={2}
+                style={{
+                  padding: '4px 8px',
+                  fontWeight: 700,
+                  background: 'rgba(124,58,237,0.06)',
+                  borderBottom: '1px solid #cbd5e1',
+                  borderRight: '1px solid #cbd5e1',
+                  fontSize: '14px',
+                  color: '#5b21b6',
+                }}
+                title="左右差 = leftAngle + rightAngle（右センサー反転補正済み）。対称なら≈0°"
+              >
+                Δ角度差 (左−右)
               </th>
               <th
                 rowSpan={2}
@@ -576,23 +610,12 @@ export default function StrokeMetricsTable({
                 style={{
                   padding: '2px 8px',
                   fontWeight: 600,
-                  borderRight: '1px solid #e2e8f0',
-                  fontSize: '12px',
-                  color: '#475569',
-                }}
-              >
-                フィニッシュ
-              </th>
-              <th
-                style={{
-                  padding: '2px 8px',
-                  fontWeight: 600,
                   borderRight: '1px solid #cbd5e1',
                   fontSize: '12px',
                   color: '#475569',
                 }}
               >
-                アーク
+                フィニッシュ
               </th>
               <th
                 style={{
@@ -609,7 +632,7 @@ export default function StrokeMetricsTable({
                 style={{
                   padding: '2px 8px',
                   fontWeight: 600,
-                  borderRight: '1px solid #e2e8f0',
+                  borderRight: '1px solid #cbd5e1',
                   fontSize: '12px',
                   color: '#475569',
                 }}
@@ -620,12 +643,25 @@ export default function StrokeMetricsTable({
                 style={{
                   padding: '2px 8px',
                   fontWeight: 600,
+                  borderRight: '1px solid #e2e8f0',
+                  fontSize: '12px',
+                  color: '#7c3aed',
+                }}
+                title="Δキャッチ角 = leftCatch + rightCatch。対称≈0、正=左が前方寄り"
+              >
+                Δキャッチ
+              </th>
+              <th
+                style={{
+                  padding: '2px 8px',
+                  fontWeight: 600,
                   borderRight: '1px solid #cbd5e1',
                   fontSize: '12px',
-                  color: '#475569',
+                  color: '#0891b2',
                 }}
+                title="Δフィニッシュ角 = leftFinish + rightFinish。対称≈0、負=左が後方寄り"
               >
-                アーク
+                Δフィニッシュ
               </th>
             </tr>
           </thead>
@@ -647,7 +683,7 @@ export default function StrokeMetricsTable({
                       &nbsp;
                     </td>
                     <td
-                      colSpan={3}
+                      colSpan={2}
                       style={{
                         padding: '8px',
                         background: '#fafafa',
@@ -657,7 +693,17 @@ export default function StrokeMetricsTable({
                       &nbsp;
                     </td>
                     <td
-                      colSpan={3}
+                      colSpan={2}
+                      style={{
+                        padding: '8px',
+                        background: '#fafafa',
+                        borderRight: '1px solid #cbd5e1',
+                      }}
+                    >
+                      &nbsp;
+                    </td>
+                    <td
+                      colSpan={2}
                       style={{
                         padding: '8px',
                         background: '#fafafa',
@@ -673,10 +719,10 @@ export default function StrokeMetricsTable({
 
               const isActive = isMultiDataset
                 ? row.datasetId === selectedDatasetId &&
-                  currentIndex >= row.startFrame &&
-                  currentIndex <= row.endFrame
+                currentIndex >= row.startFrame &&
+                currentIndex <= row.endFrame
                 : activeRowIndex !== -1 &&
-                  rows[activeRowIndex]?.strokeIndex === row.strokeIndex;
+                rows[activeRowIndex]?.strokeIndex === row.strokeIndex;
 
               return (
                 <tr
@@ -731,24 +777,13 @@ export default function StrokeMetricsTable({
                   <td
                     style={{
                       padding: '8px',
-                      borderRight: '1px solid #e2e8f0',
+                      borderRight: '1px solid #cbd5e1',
                       color: '#ea580c',
                       fontWeight: 600,
                       fontSize: '18px',
                     }}
                   >
                     {row.leftFinish.toFixed(1)}°
-                  </td>
-                  <td
-                    style={{
-                      padding: '8px',
-                      borderRight: '1px solid #cbd5e1',
-                      fontWeight: 700,
-                      color: '#0f172a',
-                      fontSize: '19px',
-                    }}
-                  >
-                    {row.leftSweep.toFixed(1)}°
                   </td>
                   {/* 右オール */}
                   <td
@@ -765,7 +800,7 @@ export default function StrokeMetricsTable({
                   <td
                     style={{
                       padding: '8px',
-                      borderRight: '1px solid #e2e8f0',
+                      borderRight: '1px solid #cbd5e1',
                       color: '#ea580c',
                       fontWeight: 600,
                       fontSize: '18px',
@@ -773,16 +808,30 @@ export default function StrokeMetricsTable({
                   >
                     {row.rightFinish.toFixed(1)}°
                   </td>
+                  {/* Δ角度差 */}
+                  <td
+                    style={{
+                      padding: '8px',
+                      borderRight: '1px solid #e2e8f0',
+                      fontWeight: 700,
+                      color: Math.abs(row.catchAngleDiff) < 3 ? '#16a34a' : Math.abs(row.catchAngleDiff) < 8 ? '#d97706' : '#dc2626',
+                      fontSize: '18px',
+                    }}
+                    title="Δキャッチ角 = leftCatch + rightCatch（対称≈0°）"
+                  >
+                    {row.catchAngleDiff >= 0 ? '+' : ''}{row.catchAngleDiff.toFixed(1)}°
+                  </td>
                   <td
                     style={{
                       padding: '8px',
                       borderRight: '1px solid #cbd5e1',
                       fontWeight: 700,
-                      color: '#0f172a',
-                      fontSize: '19px',
+                      color: Math.abs(row.finishAngleDiff) < 3 ? '#16a34a' : Math.abs(row.finishAngleDiff) < 8 ? '#d97706' : '#dc2626',
+                      fontSize: '18px',
                     }}
+                    title="Δフィニッシュ角 = leftFinish + rightFinish（対称≈0°）"
                   >
-                    {row.rightSweep.toFixed(1)}°
+                    {row.finishAngleDiff >= 0 ? '+' : ''}{row.finishAngleDiff.toFixed(1)}°
                   </td>
                   {/* リズム */}
                   <td

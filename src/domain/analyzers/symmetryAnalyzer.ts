@@ -21,9 +21,17 @@ import type { Analyzer, AnalysisInput } from './types';
 
 export interface StrokeSymmetry {
   strokeIndex: number;
-  /** キャッチ角の左右差 (左avg - 右avg) [deg]. 正 = 左が大きい */
+  /**
+   * キャッチ角の左右差 = leftCatch + rightCatch [deg]
+   * 右オールセンサーは物理的に左と反転しているため対称位置では rightAngle ≈ -leftAngle。
+   * よって (left - right) ではなく (left + right) を使う。
+   * 対称ストロークで ≈ 0、正 = 左キャッチが進行方向に近い。
+   */
   catchAngleDiff: number | null;
-  /** フィニッシュ角の左右差 (左avg - 右avg) [deg]. 正 = 左が大きい */
+  /**
+   * フィニッシュ角の左右差 = leftFinish + rightFinish [deg]
+   * 対称ストロークで ≈ 0、負 = 左フィニッシュが艇後方寄り。
+   */
   finishAngleDiff: number | null;
   /** スイープ角の左右差 (左sweep - 右sweep) [deg]. 正 = 左が広い */
   sweepDiff: number | null;
@@ -123,11 +131,14 @@ export const symmetryAnalyzer: Analyzer<SymmetryResult> = {
         const lFinish = phaseAvg(leftAngles,  finishPhase.startFrame, finishPhase.endFrame, 0);
         const rFinish = phaseAvg(rightAngles, finishPhase.startFrame, finishPhase.endFrame, 0);
 
+        // 右オールセンサーは物理的に左と反転しているため、対称なら rightAngle ≈ -leftAngle。
+        // (left - right) で計算すると対称でも大きな値になる（例: +60° - (-60°) = 120°）。
+        // (left + right) を使うことで対称なら ≈ 0 になり、実際の非対称量が正しく表れる。
         if (lCatch !== null && rCatch !== null) {
-          catchAngleDiff = lCatch - rCatch;
+          catchAngleDiff = lCatch + rCatch;
         }
         if (lFinish !== null && rFinish !== null) {
-          finishAngleDiff = lFinish - rFinish;
+          finishAngleDiff = lFinish + rFinish;
         }
         if (lCatch !== null && lFinish !== null && rCatch !== null && rFinish !== null) {
           sweepDiff = Math.abs(lCatch - lFinish) - Math.abs(rCatch - rFinish);
