@@ -281,7 +281,7 @@ function App() {
                 </button>
               </div>
               <div className="tab-content-wrapper">
-                <Suspense fallback={<div className="panel overlay-message loading">3D表示を読み込み中...</div>}>
+                <Suspense fallback={<div className="overlay-message loading">3D表示を読み込み中...</div>}>
                   {activeSceneTab === 'scene' && (
                     <Scene frames={frames} frameIndex={uiFrame} />
                   )}
@@ -313,7 +313,7 @@ function App() {
                 </button>
               </div>
               <div className="tab-content-wrapper">
-                <Suspense fallback={<div className="panel overlay-message loading">オール軌跡を読み込み中...</div>}>
+                <Suspense fallback={<div className="overlay-message loading">オール軌跡を読み込み中...</div>}>
                   <OarTrajectoryChart
                     key={`oar-${expandedPanel ?? 'none'}`}
                     frames={frames}
@@ -340,7 +340,7 @@ function App() {
                 </button>
               </div>
               <div className="tab-content-wrapper">
-                <Suspense fallback={<div className="panel overlay-message loading">地図を読み込み中...</div>}>
+                <Suspense fallback={<div className="overlay-message loading">地図を読み込み中...</div>}>
                   {activeMapTab === 'map' && (
                     <RowingMap
                       key={`map-${expandedPanel ?? 'none'}`}
@@ -380,7 +380,7 @@ function App() {
                 )}
               </div>
               <div className="tab-content-wrapper">
-                <Suspense fallback={<div className="panel overlay-message loading">表示データを読み込み中...</div>}>
+                <Suspense fallback={<div className="overlay-message loading">表示データを読み込み中...</div>}>
                   {activeTimeseriesTab === 'chart' ? (
                     <TimeSeriesChart
                       key={`ts-${expandedPanel ?? 'none'}`}

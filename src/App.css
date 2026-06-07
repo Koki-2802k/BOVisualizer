@@ -625,10 +625,17 @@
   font-weight: 600;
   cursor: pointer;
   font-size: 14px;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition: color 0.15s ease;
   position: relative;
   margin-bottom: -1.5px; /* 親の border-bottom としっかり重ねる */
   z-index: 1; /* 親の境界線より上に重ねるベース */
+  outline: none;
+}
+
+.timeseries-tab-btn:focus,
+.timeseries-tab-btn:active,
+.timeseries-tab-btn:focus-visible {
+  outline: none;
 }
 
 .timeseries-tab-btn:hover {
