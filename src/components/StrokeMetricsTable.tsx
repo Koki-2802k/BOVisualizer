@@ -1,8 +1,150 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, memo } from 'react';
 import type { RowingFrame } from '../types/rowing';
 import type { StrokeSegment } from '../types/strokeDetect';
 import { buildOarTrajectory, type TrajectoryPoint } from '../utils/trajectory';
 import { usePlaybackStore } from '../store/playbackStore';
+
+// スパークラインコンポーネント（ホバー時のストローク番号ツールチップ表示機能付き）
+type SparklineProps = {
+  values: number[];
+  strokeColor: string;
+  width?: number;
+  height?: number;
+};
+
+const Sparkline = memo(function Sparkline({ values, strokeColor, width = 180, height = 40 }: SparklineProps) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  if (values.length < 2) {
+    return (
+      <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>
+        データ不足
+      </span>
+    );
+  }
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+
+  const points = values.map((val, idx) => {
+    const x = (idx / (values.length - 1)) * width;
+    const y = height - ((val - min) / range) * (height - 8) - 4;
+    return { x, y, value: val, index: idx };
+  });
+
+  const pointsStr = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const percent = Math.max(0, Math.min(1, mouseX / rect.width));
+    const idx = Math.round(percent * (values.length - 1));
+    setHoveredIndex(idx);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredIndex(null);
+  };
+
+  const hoveredPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
+
+  // ツールチップの位置決定（はみ出し防止と被り回避）
+  const tooltipW = 28;
+  const tooltipH = 20;
+  let tooltipX = 0;
+  let tooltipY = 0;
+
+  if (hoveredPoint) {
+    tooltipX = hoveredPoint.x - tooltipW / 2;
+    if (tooltipX < 2) tooltipX = 2;
+    if (tooltipX + tooltipW > width - 2) tooltipX = width - tooltipW - 2;
+
+    // データ点が上半分にあれば下側、下半分にあれば上側に表示してカーソルとの被りを防ぐ
+    const showBelow = hoveredPoint.y < height / 2;
+    tooltipY = showBelow ? hoveredPoint.y + 12 : hoveredPoint.y - 32;
+  }
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      style={{ overflow: 'visible', verticalAlign: 'middle', cursor: 'pointer' }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      <polyline
+        fill="none"
+        stroke="rgba(203, 213, 225, 0.4)"
+        strokeWidth="1"
+        points={`0,${(height / 2).toFixed(1)} ${width},${(height / 2).toFixed(1)}`}
+      />
+      <polyline
+        fill="none"
+        stroke={strokeColor}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={pointsStr}
+      />
+      <circle
+        cx="0"
+        cy={points[0].y.toFixed(1)}
+        r="3"
+        fill={strokeColor}
+      />
+      <circle
+        cx={width}
+        cy={points[points.length - 1].y.toFixed(1)}
+        r="3"
+        fill="#ef4444"
+      />
+
+      {hoveredPoint && (
+        <g>
+          <line
+            x1={hoveredPoint.x}
+            y1={0}
+            x2={hoveredPoint.x}
+            y2={height}
+            stroke="#94a3b8"
+            strokeWidth="1"
+            strokeDasharray="2 2"
+          />
+          <circle
+            cx={hoveredPoint.x}
+            cy={hoveredPoint.y}
+            r="5"
+            fill="#ef4444"
+          />
+          <g style={{ pointerEvents: 'none' }}>
+            <rect
+              x={tooltipX}
+              y={tooltipY}
+              width={tooltipW}
+              height={tooltipH}
+              rx="4"
+              fill="#0f172a"
+              stroke="#ffffff"
+              strokeWidth="1"
+            />
+            <text
+              x={tooltipX + tooltipW / 2}
+              y={tooltipY + tooltipH / 2 + 4.5}
+              fill="#ffffff"
+              fontSize="12"
+              fontWeight="bold"
+              textAnchor="middle"
+            >
+              {hoveredPoint.index + 1}
+            </text>
+          </g>
+        </g>
+      )}
+    </svg>
+  );
+});
+
 
 /** 全データセット横断表示用の1データセット分のデータ */
 export type DatasetStrokeData = {
@@ -209,146 +351,7 @@ export default function StrokeMetricsTable({
     }
   }, [strokes, allDatasetsData, activeRowIndex, itemsPerPage]);
 
-// スパークラインコンポーネント（ホバー時のストローク番号ツールチップ表示機能付き）
-type SparklineProps = {
-  values: number[];
-  strokeColor: string;
-  width?: number;
-  height?: number;
-};
 
-function Sparkline({ values, strokeColor, width = 180, height = 40 }: SparklineProps) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-
-  if (values.length < 2) {
-    return (
-      <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>
-        データ不足
-      </span>
-    );
-  }
-
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-
-  const points = values.map((val, idx) => {
-    const x = (idx / (values.length - 1)) * width;
-    const y = height - ((val - min) / range) * (height - 8) - 4;
-    return { x, y, value: val, index: idx };
-  });
-
-  const pointsStr = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const percent = Math.max(0, Math.min(1, mouseX / rect.width));
-    const idx = Math.round(percent * (values.length - 1));
-    setHoveredIndex(idx);
-  };
-
-  const handleMouseLeave = () => {
-    setHoveredIndex(null);
-  };
-
-  const hoveredPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
-
-  // ツールチップの位置決定（はみ出し防止と被り回避）
-  const tooltipW = 28;
-  const tooltipH = 20;
-  let tooltipX = 0;
-  let tooltipY = 0;
-
-  if (hoveredPoint) {
-    tooltipX = hoveredPoint.x - tooltipW / 2;
-    if (tooltipX < 2) tooltipX = 2;
-    if (tooltipX + tooltipW > width - 2) tooltipX = width - tooltipW - 2;
-
-    // データ点が上半分にあれば下側、下半分にあれば上側に表示してカーソルとの被りを防ぐ
-    const showBelow = hoveredPoint.y < height / 2;
-    tooltipY = showBelow ? hoveredPoint.y + 12 : hoveredPoint.y - 32;
-  }
-
-  return (
-    <svg
-      width={width}
-      height={height}
-      style={{ overflow: 'visible', verticalAlign: 'middle', cursor: 'pointer' }}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-    >
-      <polyline
-        fill="none"
-        stroke="rgba(203, 213, 225, 0.4)"
-        strokeWidth="1"
-        points={`0,${(height / 2).toFixed(1)} ${width},${(height / 2).toFixed(1)}`}
-      />
-      <polyline
-        fill="none"
-        stroke={strokeColor}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points={pointsStr}
-      />
-      <circle
-        cx="0"
-        cy={points[0].y.toFixed(1)}
-        r="3"
-        fill={strokeColor}
-      />
-      <circle
-        cx={width}
-        cy={points[points.length - 1].y.toFixed(1)}
-        r="3"
-        fill="#ef4444"
-      />
-
-      {hoveredPoint && (
-        <g>
-          <line
-            x1={hoveredPoint.x}
-            y1={0}
-            x2={hoveredPoint.x}
-            y2={height}
-            stroke="#94a3b8"
-            strokeWidth="1"
-            strokeDasharray="2 2"
-          />
-          <circle
-            cx={hoveredPoint.x}
-            cy={hoveredPoint.y}
-            r="5"
-            fill="#ef4444"
-          />
-          <g style={{ pointerEvents: 'none' }}>
-            <rect
-              x={tooltipX}
-              y={tooltipY}
-              width={tooltipW}
-              height={tooltipH}
-              rx="4"
-              fill="#0f172a"
-              stroke="#ffffff"
-              strokeWidth="1"
-            />
-            <text
-              x={tooltipX + tooltipW / 2}
-              y={tooltipY + tooltipH / 2 + 4.5}
-              fill="#ffffff"
-              fontSize="12"
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              {hoveredPoint.index + 1}
-            </text>
-          </g>
-        </g>
-      )}
-    </svg>
-  );
-}
 
   const totalPages = Math.ceil(rows.length / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;

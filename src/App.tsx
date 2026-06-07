@@ -74,6 +74,11 @@ function App() {
     }
   }, [datasetState.manifest, setDatasets, customDatasets]);
 
+  // ファイルが増減したときにスナップショットをクリアし、グラフを最新状態に再構築する
+  useEffect(() => {
+    setMetricsSnapshot(null);
+  }, [datasets.length, Object.keys(customDatasets).length]);
+
   const { uiFrame } = useAnimationClock({
     frameCount: frames.length,
     fps,
