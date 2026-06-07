@@ -100,7 +100,10 @@ export function detectStrokesInternal(frames: NormalizedFrame[], trajectory?: Tr
     finishEnd: number;
   }
 
-  const sessions: WaterSession[] = [];
+  // ─────────────────────────────────────────
+  // Phase 1: 全水中セッションを生検出（チャタリング除去前）
+  // ─────────────────────────────────────────
+  const rawSessions: WaterSession[] = [];
   let tScan = 0;
 
   while (tScan < N) {
@@ -111,58 +114,134 @@ export function detectStrokesInternal(frames: NormalizedFrame[], trajectory?: Tr
 
     const catchStart = tScan;
 
-    // 左右両方が水に入る瞬間を探す
-    let catchEnd = catchStart;
-    let searchT = catchStart;
-    let foundBoth = false;
+    // 水から完全に脱出する瞬間を探す（セッション全体の終了位置）
+    let waterEnd = catchStart;
+    while (waterEnd < N && isInWater(waterEnd)) {
+      waterEnd++;
+    }
+    waterEnd = Math.max(catchStart, waterEnd - 1);
 
-    while (searchT < N && isInWater(searchT)) {
-      if (isBothIn(searchT)) {
-        catchEnd = searchT;
-        foundBoth = true;
+    rawSessions.push({
+      catchStart,
+      catchEnd: catchStart,       // Phase 4 で再計算
+      finishStart: waterEnd,      // Phase 4 で再計算
+      finishEnd: waterEnd,
+    });
+
+    tScan = waterEnd + 1;
+  }
+
+  // ─────────────────────────────────────────
+  // Phase 2: 隣接セッションのマージ（ギャップベース統合）
+  //
+  // キャッチ時: 短い入水→短い離水→本来の入水 のチャタリングを統合
+  // フィニッシュ時: 本来の離水→短い再入水→離水 のチャタリングを統合
+  //
+  // マージ条件: ギャップが短く、かつ隣接セッションの少なくとも一方が
+  // 短い（チャタリング的な）場合のみマージする。
+  // これにより、正常な連続セッション同士の誤マージを防ぐ。
+  // ─────────────────────────────────────────
+  const gapThreshold = Math.max(4, Math.round(fps * 0.15));     // 約0.15秒
+  const chatterLen   = Math.max(8, Math.round(fps * 0.25));     // セッションが「短い」とみなすしきい値
+  const mergedSessions: WaterSession[] = [];
+
+  for (let i = 0; i < rawSessions.length; i++) {
+    let merged = { ...rawSessions[i] };
+
+    // 後続セッションとのギャップが短く、かつ片方が短ければマージ
+    while (i + 1 < rawSessions.length) {
+      const next = rawSessions[i + 1];
+      const gap = next.catchStart - merged.finishEnd - 1;
+      if (gap > gapThreshold) break;
+
+      // マージ元(merged)または後続(next)のいずれかが短い場合のみマージ
+      const mergedLen = merged.finishEnd - merged.catchStart + 1;
+      const nextLen   = next.finishEnd - next.catchStart + 1;
+      if (mergedLen < chatterLen || nextLen < chatterLen) {
+        // マージ: finishEnd を後続セッションの終了位置に拡張
+        merged.finishEnd = next.finishEnd;
+        i++;
+      } else {
         break;
       }
-      searchT++;
     }
 
-    if (!foundBoth) {
-      catchEnd = catchStart;
+    mergedSessions.push(merged);
+  }
+
+  // ─────────────────────────────────────────
+  // Phase 3: マージ後の短いセッション除去
+  // ─────────────────────────────────────────
+  const minSessionLen = Math.max(8, Math.round(fps * 0.25));
+
+  // ─────────────────────────────────────────
+  // Phase 4: セッション内の catchEnd / finishStart を再計算し、
+  //          最終 sessions を構築
+  // ─────────────────────────────────────────
+  const sessions: WaterSession[] = [];
+
+  for (const raw of mergedSessions) {
+    // 短いセッションはノイズとして除外
+    if (raw.finishEnd - raw.catchStart + 1 < minSessionLen) {
+      continue;
     }
 
-    // フィニッシュの開始（いずれかが水から出る瞬間）を探す
-    let finishStart = catchEnd + 1;
-    if (foundBoth) {
-      let searchFinish = catchEnd;
-      while (searchFinish < N && isInWater(searchFinish)) {
-        if (!isBothIn(searchFinish)) {
-          finishStart = searchFinish;
+    const catchStart = raw.catchStart;
+    const finishEnd = raw.finishEnd;
+
+    // catchEnd: セッション範囲内で最初に isBothIn になるフレーム
+    // マージされたセッション内にはギャップ（空中区間）が含まれうるため、
+    // isInWater のチェックで止めずに範囲全体を走査する
+    let catchEnd = catchStart;
+    let foundBoth = false;
+    {
+      let t = catchStart;
+      while (t <= finishEnd) {
+        if (isInWater(t) && isBothIn(t)) {
+          catchEnd = t;
+          foundBoth = true;
           break;
         }
-        searchFinish++;
+        t++;
       }
-      if (finishStart >= N || !isInWater(finishStart)) {
-        let searchEndW = catchEnd;
-        while (searchEndW < N && isInWater(searchEndW)) searchEndW++;
-        finishStart = Math.max(catchEnd + 1, searchEndW - 1);
+    }
+
+    // finishStart: catchEnd 以降で、最後に isBothIn だった区間の後、
+    // いずれかが水から出始めるフレームを探す。
+    // マージされたセッション内のギャップをまたいで走査する。
+    let finishStart = catchEnd + 1;
+    if (foundBoth) {
+      // catchEnd 以降で最後に isBothIn だったフレームを探す
+      let lastBothIn = catchEnd;
+      for (let t = catchEnd; t <= finishEnd; t++) {
+        if (isInWater(t) && isBothIn(t)) {
+          lastBothIn = t;
+        }
+      }
+      // lastBothIn の直後から、いずれかが水中かつ !isBothIn のフレームを探す
+      finishStart = lastBothIn + 1;
+      for (let t = lastBothIn + 1; t <= finishEnd; t++) {
+        if (isInWater(t) && !isBothIn(t)) {
+          finishStart = t;
+          break;
+        }
+      }
+      // フォールバック: finishStart が範囲外の場合
+      if (finishStart > finishEnd) {
+        // 最後の水中フレームの直前をフィニッシュ開始にする
+        let lastWater = catchEnd;
+        for (let t = catchEnd; t <= finishEnd; t++) {
+          if (isInWater(t)) lastWater = t;
+        }
+        finishStart = Math.max(catchEnd + 1, lastWater);
       }
     } else {
-      let searchEndW = catchStart;
-      while (searchEndW < N && isInWater(searchEndW)) searchEndW++;
-      finishStart = Math.max(catchStart + 1, searchEndW - 1);
-    }
-
-    // 水から完全に脱出する瞬間を探す
-    let finishEnd = finishStart;
-    while (finishEnd < N && isInWater(finishEnd)) {
-      finishEnd++;
-    }
-    finishEnd = Math.max(finishStart, finishEnd - 1);
-
-    // チャタリング・ノイズ対策: あまりにも短い水中セッション（約0.25秒未満）はノイズとして除外
-    const minSessionLen = Math.max(8, Math.round(fps * 0.25));
-    if (finishEnd - catchStart + 1 < minSessionLen) {
-      tScan = finishEnd + 1;
-      continue;
+      // 左右片方だけの入水: 最後の水中フレーム付近をフィニッシュ開始にする
+      let lastWater = catchStart;
+      for (let t = catchStart; t <= finishEnd; t++) {
+        if (isInWater(t)) lastWater = t;
+      }
+      finishStart = Math.max(catchStart + 1, lastWater);
     }
 
     sessions.push({
@@ -171,8 +250,6 @@ export function detectStrokesInternal(frames: NormalizedFrame[], trajectory?: Tr
       finishStart,
       finishEnd,
     });
-
-    tScan = finishEnd + 1;
   }
 
   // 最終的なストロークと 4 位相の組み立て
