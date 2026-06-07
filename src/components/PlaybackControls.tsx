@@ -319,7 +319,33 @@ export default function PlaybackControls({
           <div className="options-popover" onClick={(e) => e.stopPropagation()}>
             <h4 style={{ margin: '0 0 12px 0', fontSize: '25px', color: '#f8fafc', borderBottom: '1px solid rgba(255, 255, 255, 0.15)', paddingBottom: '8px', textAlign: 'left', fontWeight: 600 }}>設定オプション</h4>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px', margin: '8px 0 12px 0', opacity: strokeCount === 0 ? 0.5 : 1 }}>
+            <label className="option-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', cursor: 'pointer', color: '#e2e8f0', fontSize: '20px', margin: '8px 0 12px 0', minWidth: 'auto', fontWeight: 500 }}>
+              <input
+                type="checkbox"
+                checked={autoReloadEnabled}
+                onChange={(e) => onAutoReloadEnabledChange?.(e.target.checked)}
+                style={{ width: '30px', height: '30px', cursor: 'pointer', margin: 0 }}
+              />
+              <span style={{ userSelect: 'none' }}>自動再読み込みを有効化</span>
+            </label>
+
+            <label className="option-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#e2e8f0', fontSize: '20px', textAlign: 'left', minWidth: 'auto', fontWeight: 500 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '16px' }}>
+                <span style={{ userSelect: 'none' }}>再読み込み間隔</span>
+                <span style={{ fontWeight: 'bold', color: '#38bdf8' }}>{autoReloadInterval}秒</span>
+              </div>
+              <input
+                type="range"
+                min={2}
+                max={60}
+                value={autoReloadInterval}
+                onChange={(e) => onAutoReloadIntervalChange?.(Number(e.target.value))}
+                disabled={!autoReloadEnabled}
+                style={{ width: '100%', cursor: autoReloadEnabled ? 'pointer' : 'not-allowed', opacity: autoReloadEnabled ? 1 : 0.5, margin: '6px 0 0 0', height: '30px' }}
+              />
+            </label>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px', margin: '16px 0 12px 0', opacity: strokeCount === 0 ? 0.5 : 1 }}>
               <label className="option-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', cursor: strokeCount === 0 ? 'not-allowed' : 'pointer', color: '#e2e8f0', fontSize: '20px', margin: 0, minWidth: 'auto', fontWeight: 500, flexGrow: 1 }}>
                 <input
                   type="checkbox"
@@ -365,32 +391,6 @@ export default function PlaybackControls({
                 &gt;
               </button>
             </div>
-
-            <label className="option-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', cursor: 'pointer', color: '#e2e8f0', fontSize: '20px', margin: '8px 0 12px 0', minWidth: 'auto', fontWeight: 500 }}>
-              <input
-                type="checkbox"
-                checked={autoReloadEnabled}
-                onChange={(e) => onAutoReloadEnabledChange?.(e.target.checked)}
-                style={{ width: '30px', height: '30px', cursor: 'pointer', margin: 0 }}
-              />
-              <span style={{ userSelect: 'none' }}>自動再読み込みを有効化</span>
-            </label>
-
-            <label className="option-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#e2e8f0', fontSize: '20px', textAlign: 'left', minWidth: 'auto', fontWeight: 500 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '16px' }}>
-                <span style={{ userSelect: 'none' }}>再読み込み間隔:</span>
-                <span style={{ fontWeight: 'bold', color: '#38bdf8' }}>{autoReloadInterval}秒</span>
-              </div>
-              <input
-                type="range"
-                min={2}
-                max={60}
-                value={autoReloadInterval}
-                onChange={(e) => onAutoReloadIntervalChange?.(Number(e.target.value))}
-                disabled={!autoReloadEnabled}
-                style={{ width: '100%', cursor: autoReloadEnabled ? 'pointer' : 'not-allowed', opacity: autoReloadEnabled ? 1 : 0.5, margin: '6px 0 0 0', height: '30px' }}
-              />
-            </label>
 
             <label className="option-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#e2e8f0', fontSize: '20px', textAlign: 'left', minWidth: 'auto', fontWeight: 500, margin: '8px 0 0 0' }}>
               <span style={{ userSelect: 'none' }}>初期表示オール軌跡</span>
