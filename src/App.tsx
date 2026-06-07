@@ -265,21 +265,23 @@ function App() {
               <button className="panel-close-btn" onClick={handleCloseExpanded} title="元の画面に戻す">✕</button>
             )}
             <ErrorBoundary fallbackTitle="3D表示エラー">
-              <Suspense fallback={<div className="panel overlay-message loading">3D表示を読み込み中...</div>}>
-                {/* 3Dシーンパネルヘッダー（横線付き・常時表示・タブ対応） */}
-                <div style={{ ...panelHeaderStyle, paddingBottom: 0 }} onDoubleClick={() => handleExpandPanel('scene')}>
-                  <button
-                    type="button"
-                    className={`timeseries-tab-btn ${activeSceneTab === 'scene' ? 'active' : ''}`}
-                    onClick={() => setActiveSceneTab('scene')}
-                  >
-                    3Dグラフ
-                  </button>
-                </div>
-                {activeSceneTab === 'scene' && (
-                  <Scene frames={frames} frameIndex={uiFrame} />
-                )}
-              </Suspense>
+              {/* 3Dシーンパネルヘッダー（横線付き・常時表示・タブ対応） */}
+              <div style={{ ...panelHeaderStyle, paddingBottom: 0 }} onDoubleClick={() => handleExpandPanel('scene')}>
+                <button
+                  type="button"
+                  className={`timeseries-tab-btn ${activeSceneTab === 'scene' ? 'active' : ''}`}
+                  onClick={() => setActiveSceneTab('scene')}
+                >
+                  3Dグラフ
+                </button>
+              </div>
+              <div className="tab-content-wrapper">
+                <Suspense fallback={<div className="panel overlay-message loading">3D表示を読み込み中...</div>}>
+                  {activeSceneTab === 'scene' && (
+                    <Scene frames={frames} frameIndex={uiFrame} />
+                  )}
+                </Suspense>
+              </div>
             </ErrorBoundary>
           </section>
 
@@ -288,30 +290,32 @@ function App() {
               <button className="panel-close-btn" onClick={handleCloseExpanded} title="元の画面に戻す">✕</button>
             )}
             <ErrorBoundary fallbackTitle="軌跡表示エラー">
-              <Suspense fallback={<div className="panel overlay-message loading">オール軌跡を読み込み中...</div>}>
-                {/* オール軌跡パネルヘッダー（左オール・右オールタブ切り替え） */}
-                <div style={{ ...panelHeaderStyle, paddingBottom: 0 }} onDoubleClick={() => handleExpandPanel('oar')}>
-                  <button
-                    type="button"
-                    className={`timeseries-tab-btn ${oarSide === 'left' ? 'active' : ''}`}
-                    onClick={() => setOarSide('left')}
-                  >
-                    左オール
-                  </button>
-                  <button
-                    type="button"
-                    className={`timeseries-tab-btn ${oarSide === 'right' ? 'active' : ''}`}
-                    onClick={() => setOarSide('right')}
-                  >
-                    右オール
-                  </button>
-                </div>
-                <OarTrajectoryChart
-                  key={`oar-${expandedPanel ?? 'none'}`}
-                  frames={frames}
-                  currentIndex={uiFrame}
-                />
-              </Suspense>
+              {/* オール軌跡パネルヘッダー（左オール・右オールタブ切り替え） */}
+              <div style={{ ...panelHeaderStyle, paddingBottom: 0 }} onDoubleClick={() => handleExpandPanel('oar')}>
+                <button
+                  type="button"
+                  className={`timeseries-tab-btn ${oarSide === 'left' ? 'active' : ''}`}
+                  onClick={() => setOarSide('left')}
+                >
+                  左オール
+                </button>
+                <button
+                  type="button"
+                  className={`timeseries-tab-btn ${oarSide === 'right' ? 'active' : ''}`}
+                  onClick={() => setOarSide('right')}
+                >
+                  右オール
+                </button>
+              </div>
+              <div className="tab-content-wrapper">
+                <Suspense fallback={<div className="panel overlay-message loading">オール軌跡を読み込み中...</div>}>
+                  <OarTrajectoryChart
+                    key={`oar-${expandedPanel ?? 'none'}`}
+                    frames={frames}
+                    currentIndex={uiFrame}
+                  />
+                </Suspense>
+              </div>
             </ErrorBoundary>
           </section>
 
@@ -320,27 +324,29 @@ function App() {
               <button className="panel-close-btn" onClick={handleCloseExpanded} title="元の画面に戻す">✕</button>
             )}
             <ErrorBoundary fallbackTitle="地図表示エラー">
-              <Suspense fallback={<div className="panel overlay-message loading">地図を読み込み中...</div>}>
-                {/* GPS地図パネルヘッダー（横線付き・常時表示・タブ対応） */}
-                <div style={{ ...panelHeaderStyle, paddingBottom: 0 }} onDoubleClick={() => handleExpandPanel('map')}>
-                  <button
-                    type="button"
-                    className={`timeseries-tab-btn ${activeMapTab === 'map' ? 'active' : ''}`}
-                    onClick={() => setActiveMapTab('map')}
-                  >
-                    GPS地図
-                  </button>
-                </div>
-                {activeMapTab === 'map' && (
-                  <RowingMap
-                    key={`map-${expandedPanel ?? 'none'}`}
-                    gpsPoints={metrics?.gpsValidPoints && metrics.gpsValidPoints.length > 0
-                      ? metrics.gpsValidPoints
-                      : []}
-                    frameIndex={uiFrame}
-                  />
-                )}
-              </Suspense>
+              {/* GPS地図パネルヘッダー（横線付き・常時表示・タブ対応） */}
+              <div style={{ ...panelHeaderStyle, paddingBottom: 0 }} onDoubleClick={() => handleExpandPanel('map')}>
+                <button
+                  type="button"
+                  className={`timeseries-tab-btn ${activeMapTab === 'map' ? 'active' : ''}`}
+                  onClick={() => setActiveMapTab('map')}
+                >
+                  GPS地図
+                </button>
+              </div>
+              <div className="tab-content-wrapper">
+                <Suspense fallback={<div className="panel overlay-message loading">地図を読み込み中...</div>}>
+                  {activeMapTab === 'map' && (
+                    <RowingMap
+                      key={`map-${expandedPanel ?? 'none'}`}
+                      gpsPoints={metrics?.gpsValidPoints && metrics.gpsValidPoints.length > 0
+                        ? metrics.gpsValidPoints
+                        : []}
+                      frameIndex={uiFrame}
+                    />
+                  )}
+                </Suspense>
+              </div>
             </ErrorBoundary>
           </section>
 
@@ -349,47 +355,48 @@ function App() {
               <button className="panel-close-btn" onClick={handleCloseExpanded} title="元の画面に戻す">✕</button>
             )}
             <ErrorBoundary fallbackTitle="表示エラー">
-              <Suspense fallback={<div className="panel overlay-message loading">表示データを読み込み中...</div>}>
-                {/* 時系列パネルヘッダー（横線付き・常時表示） */}
-                <div style={{ ...panelHeaderStyle, paddingBottom: 0 }} onDoubleClick={() => handleExpandPanel('timeseries')}>
+              {/* 時系列パネルヘッダー（横線付き・常時表示） */}
+              <div style={{ ...panelHeaderStyle, paddingBottom: 0 }} onDoubleClick={() => handleExpandPanel('timeseries')}>
+                <button
+                  type="button"
+                  className={`timeseries-tab-btn ${activeTimeseriesTab === 'chart' ? 'active' : ''}`}
+                  onClick={() => setActiveTimeseriesTab('chart')}
+                >
+                  時系列グラフ
+                </button>
+                {analysisMode && showStrokeMetrics && hasAnyStrokes && (
                   <button
                     type="button"
-                    className={`timeseries-tab-btn ${activeTimeseriesTab === 'chart' ? 'active' : ''}`}
-                    onClick={() => setActiveTimeseriesTab('chart')}
+                    className={`timeseries-tab-btn ${activeTimeseriesTab === 'metrics' ? 'active' : ''}`}
+                    onClick={() => setActiveTimeseriesTab('metrics')}
                   >
-                    時系列グラフ
+                    メトリクス
                   </button>
-                  {analysisMode && showStrokeMetrics && hasAnyStrokes && (
-                    <button
-                      type="button"
-                      className={`timeseries-tab-btn ${activeTimeseriesTab === 'metrics' ? 'active' : ''}`}
-                      onClick={() => setActiveTimeseriesTab('metrics')}
-                    >
-                      メトリクス
-                    </button>
-                  )}
-                </div>
-
-                {activeTimeseriesTab === 'chart' ? (
-                  <TimeSeriesChart
-                    key={`ts-${expandedPanel ?? 'none'}`}
-                    frames={frames}
-                    currentIndex={uiFrame}
-                    mode={graphMode}
-                    strokes={strokes}
-                    analysisMode={analysisMode}
-                    showStrokePhases={showStrokePhases}
-                  />
-                ) : (
-                  <StrokeMetricsTable
-                    frames={snapshotFrames}
-                    strokes={snapshotStrokes}
-                    currentIndex={uiFrame}
-                    allDatasetsData={snapshotAllDatasetsData}
-                    isExpanded={expandedPanel === 'timeseries'}
-                  />
                 )}
-              </Suspense>
+              </div>
+              <div className="tab-content-wrapper">
+                <Suspense fallback={<div className="panel overlay-message loading">表示データを読み込み中...</div>}>
+                  {activeTimeseriesTab === 'chart' ? (
+                    <TimeSeriesChart
+                      key={`ts-${expandedPanel ?? 'none'}`}
+                      frames={frames}
+                      currentIndex={uiFrame}
+                      mode={graphMode}
+                      strokes={strokes}
+                      analysisMode={analysisMode}
+                      showStrokePhases={showStrokePhases}
+                    />
+                  ) : (
+                    <StrokeMetricsTable
+                      frames={snapshotFrames}
+                      strokes={snapshotStrokes}
+                      currentIndex={uiFrame}
+                      allDatasetsData={snapshotAllDatasetsData}
+                      isExpanded={expandedPanel === 'timeseries'}
+                    />
+                  )}
+                </Suspense>
+              </div>
             </ErrorBoundary>
           </section>
         </section>
