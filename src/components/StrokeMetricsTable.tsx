@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, memo } from 'react';
 import type { RowingFrame } from '../types/rowing';
 import type { StrokeSegment } from '../types/strokeDetect';
 import { buildOarTrajectory, type TrajectoryPoint } from '../utils/trajectory';
+import { isIdealAngle } from '../utils/oarAngle';
 import { usePlaybackStore } from '../store/playbackStore';
 
 // スパークラインコンポーネント（ホバー時のストローク番号ツールチップ表示機能付き）
@@ -183,11 +184,10 @@ type StrokeMetricRow = {
    * 対称なら ≈ 0。正 = 右フィニッシュが艇後方寄り、負 = 左が後方寄り。
    */
   finishAngleDiff: number;
-  driveFrames: number;
-  recoveryFrames: number;
-  drivePct: number;
-  recoveryPct: number;
-  rhythmRatio: string;
+  /** ドライブ期間中に左オールが良い角度だったフレームの割合 [0–100%] */
+  leftIdealRatio: number;
+  /** ドライブ期間中に右オールが良い角度だったフレームの割合 [0–100%] */
+  rightIdealRatio: number;
   datasetId?: string;
   datasetLabel?: string;
 };
@@ -202,7 +202,6 @@ function computeStrokeRow(
 ): StrokeMetricRow {
   const start = stroke.startFrame;
   const end = stroke.endFrame;
-  const totalFrames = end - start + 1;
 
   const strokeTrajectory = trajectory.slice(start, end + 1);
   const leftAngles = strokeTrajectory.map((t) => t.leftAngleDeg);
@@ -252,14 +251,15 @@ function computeStrokeRow(
   const catchAngleDiff = leftCatch + rightCatch;
   const finishAngleDiff = leftFinish + rightFinish;
 
+  // ドライブ区間（catch開始〜finish終了）の良角度比を計算
   const driveStart = catchSeg ? catchSeg.startFrame : start;
-  const driveEnd = finishSeg ? finishSeg.endFrame : end;
-  const driveFrames = Math.max(1, driveEnd - driveStart + 1);
-  const recoveryFrames = Math.max(1, totalFrames - driveFrames);
-
-  const drivePct = Math.round((driveFrames / totalFrames) * 100);
-  const recoveryPct = 100 - drivePct;
-  const rhythmRatio = `1:${(recoveryFrames / driveFrames).toFixed(2)}`;
+  const driveEnd   = finishSeg ? finishSeg.endFrame : end;
+  const driveTrajectory = trajectory.slice(driveStart, driveEnd + 1);
+  const totalDriveFrames = driveTrajectory.length || 1;
+  const leftIdealCount  = driveTrajectory.filter((t) => isIdealAngle(t.leftAngleDeg)).length;
+  const rightIdealCount = driveTrajectory.filter((t) => isIdealAngle(t.rightAngleDeg)).length;
+  const leftIdealRatio  = Math.round((leftIdealCount  / totalDriveFrames) * 100);
+  const rightIdealRatio = Math.round((rightIdealCount / totalDriveFrames) * 100);
 
   return {
     strokeIndex: globalIndex,
@@ -271,11 +271,8 @@ function computeStrokeRow(
     rightFinish,
     catchAngleDiff,
     finishAngleDiff,
-    driveFrames,
-    recoveryFrames,
-    drivePct,
-    recoveryPct,
-    rhythmRatio,
+    leftIdealRatio,
+    rightIdealRatio,
     datasetId,
     datasetLabel,
   };
@@ -333,6 +330,8 @@ export default function StrokeMetricsTable({
       rightFinish: rows.map((r) => r.rightFinish),
       catchAngleDiff: rows.map((r) => r.catchAngleDiff),
       finishAngleDiff: rows.map((r) => r.finishAngleDiff),
+      leftIdealRatio: rows.map((r) => r.leftIdealRatio),
+      rightIdealRatio: rows.map((r) => r.rightIdealRatio),
     }),
     [rows],
   );
@@ -436,7 +435,7 @@ export default function StrokeMetricsTable({
             </div>
           </div>
           <div style={{ paddingLeft: '8px' }}>
-            <Sparkline values={trends.leftCatch} strokeColor="#2563eb" width={isExpanded ? 320 : 180} height={isExpanded ? 56 : 42} />
+            <Sparkline values={trends.leftCatch} strokeColor="#2563eb" width={isExpanded ? 320 : 180} height={isExpanded ? 112 : 42} />
           </div>
         </div>
 
@@ -460,7 +459,7 @@ export default function StrokeMetricsTable({
             </div>
           </div>
           <div style={{ paddingLeft: '8px' }}>
-            <Sparkline values={trends.leftFinish} strokeColor="#ea580c" width={isExpanded ? 320 : 180} height={isExpanded ? 56 : 42} />
+            <Sparkline values={trends.leftFinish} strokeColor="#ea580c" width={isExpanded ? 320 : 180} height={isExpanded ? 112 : 42} />
           </div>
         </div>
 
@@ -490,7 +489,7 @@ export default function StrokeMetricsTable({
             </div>
           </div>
           <div style={{ paddingLeft: '8px' }}>
-            <Sparkline values={trends.catchAngleDiff} strokeColor="#7c3aed" width={isExpanded ? 320 : 180} height={isExpanded ? 56 : 42} />
+            <Sparkline values={trends.catchAngleDiff} strokeColor="#7c3aed" width={isExpanded ? 320 : 180} height={isExpanded ? 112 : 42} />
           </div>
         </div>
       </div>
@@ -589,9 +588,10 @@ export default function StrokeMetricsTable({
               </th>
               <th
                 rowSpan={2}
-                style={{ padding: '6px 8px', fontWeight: 700, fontSize: '14px' }}
+                style={{ padding: '6px 8px', fontWeight: 700, fontSize: '14px', color: '#16a34a' }}
+                title="ドライブ期間中に良い角度（赤色プロット条件）だったフレームの割合"
               >
-                リズム (D/R比)
+                良角度比 (%)
               </th>
             </tr>
             <tr style={{ background: '#f8fafc', height: '24px' }}>
@@ -833,19 +833,30 @@ export default function StrokeMetricsTable({
                   >
                     {row.finishAngleDiff >= 0 ? '+' : ''}{row.finishAngleDiff.toFixed(1)}°
                   </td>
-                  {/* リズム */}
+                  {/* 良角度比 */}
                   <td
                     style={{
                       padding: '8px',
                       fontWeight: 600,
-                      color: '#475569',
-                      fontSize: '18px',
+                      fontSize: '15px',
+                      textAlign: 'center',
                     }}
                   >
-                    <span style={{ fontWeight: 700, color: '#0f172a' }}>{row.rhythmRatio}</span>
-                    <span style={{ fontSize: '13px', color: '#64748b', marginLeft: '8px' }}>
-                      ({row.drivePct}% / {row.recoveryPct}%)
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                      <span style={{
+                        color: row.leftIdealRatio >= 80 ? '#16a34a' : row.leftIdealRatio >= 60 ? '#d97706' : '#dc2626',
+                        fontWeight: 700,
+                      }}>
+                        左 {row.leftIdealRatio}%
+                      </span>
+                      <span style={{ color: '#cbd5e1' }}>/</span>
+                      <span style={{
+                        color: row.rightIdealRatio >= 80 ? '#16a34a' : row.rightIdealRatio >= 60 ? '#d97706' : '#dc2626',
+                        fontWeight: 700,
+                      }}>
+                        右 {row.rightIdealRatio}%
+                      </span>
+                    </div>
                   </td>
                 </tr>
               );

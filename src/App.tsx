@@ -318,6 +318,7 @@ function App() {
                     key={`oar-${expandedPanel ?? 'none'}`}
                     frames={frames}
                     currentIndex={uiFrame}
+                    strokes={strokes}
                   />
                 </Suspense>
               </div>
