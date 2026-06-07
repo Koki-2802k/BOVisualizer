@@ -1,0 +1,1 @@
+function e(e){let t=Math.abs(Math.trunc(e))%180;return t>40&&t<140}export{e as t};
