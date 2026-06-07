@@ -73,6 +73,21 @@ function FitTrajectory({ path }: { path: LatLngExpression[] }) {
   return null;
 }
 
+// コンテナサイズが変わった際に Leaflet へ通知し、タイル欠けを防ぐ
+function MapInvalidator() {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    if (!container) return;
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
 function RecenterButton({ center }: { center: LatLngExpression }) {
   const map = useMap();
 
@@ -164,6 +179,7 @@ function RowingMap({ gpsPoints, frameIndex }: RowingMapProps) {
   return (
     <section aria-label="ローイング地図" style={mapSectionStyle}>
       <MapContainer center={center} zoom={19} scrollWheelZoom style={mapStyle}>
+        <MapInvalidator />
         <FitTrajectory path={path} />
         <RecenterButton center={center} />
         <TileLayer
