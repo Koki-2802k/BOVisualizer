@@ -25,4 +25,4 @@ dist-ssr
 
 # Playwright
 /artifacts/*
-/doc/CLAUDE.md
+/doc/*
