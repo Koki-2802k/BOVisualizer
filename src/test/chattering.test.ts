@@ -25,8 +25,8 @@ function makeFrames(count: number, fps: number): NormalizedFrame[] {
     errDegOarLeftZ: null,
     errDegOarRightZ: null,
     errDegBoatZ: null,
-    latitude: null,
-    longitude: null,
+    gpsLat: null,
+    gpsLon: null,
     metrics: {} as any,
   })) as NormalizedFrame[];
 }
