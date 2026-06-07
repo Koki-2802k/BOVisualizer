@@ -18,6 +18,7 @@ type Props = {
   currentIndex?: number;
   /** 全データセット横断表示用データ（指定時は全データセット分を表示） */
   allDatasetsData?: DatasetStrokeData[];
+  isExpanded?: boolean;
 };
 
 type StrokeMetricRow = {
@@ -130,6 +131,7 @@ export default function StrokeMetricsTable({
   strokes,
   currentIndex = 0,
   allDatasetsData,
+  isExpanded = false,
 }: Props) {
   const { setSeekFrame, selectedDatasetId, setSelectedDatasetId } = usePlaybackStore();
   const [currentPage, setCurrentPage] = useState(1);
@@ -137,10 +139,6 @@ export default function StrokeMetricsTable({
 
   const isMultiDataset = !!allDatasetsData && allDatasetsData.length > 0;
 
-  // データセット/ストローク構成が変わった場合にページを1にリセット
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [strokes, allDatasetsData]);
 
   const trajectory = useMemo(() => buildOarTrajectory(frames), [frames]);
 
@@ -201,13 +199,15 @@ export default function StrokeMetricsTable({
 
   const activeRow = activeRowIndex !== -1 ? rows[activeRowIndex] : rows[rows.length - 1];
 
-  // アクティブ行が別ページに移ったとき自動追従
+  // ストローク構成や再生位置（アクティブ行）が変わったときに、アクティブ行があるページに追従（無ければページ1）
   useEffect(() => {
     if (activeRowIndex !== -1) {
       const activePage = Math.floor(activeRowIndex / itemsPerPage) + 1;
       setCurrentPage(activePage);
+    } else {
+      setCurrentPage(1);
     }
-  }, [activeRowIndex, itemsPerPage]);
+  }, [strokes, allDatasetsData, activeRowIndex, itemsPerPage]);
 
 // スパークラインコンポーネント（ホバー時のストローク番号ツールチップ表示機能付き）
 type SparklineProps = {
@@ -402,70 +402,73 @@ function Sparkline({ values, strokeColor, width = 180, height = 40 }: SparklineP
       >
         <div
           style={{
-            flex: '1 1 240px',
+            flex: isExpanded ? '1 1 300px' : '1 1 240px',
             background: '#f8fafc',
             border: '1px solid #e2e8f0',
             borderRadius: '8px',
-            padding: '10px 14px',
+            padding: isExpanded ? '12px 18px' : '10px 14px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            transition: 'all 0.2s ease',
           }}
         >
           <div>
-            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>キャッチ角</div>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#3b82f6', marginTop: '2px' }}>
+            <div style={{ fontSize: isExpanded ? '13px' : '11px', color: '#64748b', fontWeight: 600 }}>キャッチ角</div>
+            <div style={{ fontSize: isExpanded ? '16px' : '13px', fontWeight: 700, color: '#3b82f6', marginTop: '2px' }}>
               左: {activeRow?.leftCatch.toFixed(1)}° / 右: {activeRow?.rightCatch.toFixed(1)}°
             </div>
           </div>
           <div style={{ paddingLeft: '8px' }}>
-            <Sparkline values={trends.leftCatch} strokeColor="#2563eb" width={180} height={42} />
+            <Sparkline values={trends.leftCatch} strokeColor="#2563eb" width={isExpanded ? 320 : 180} height={isExpanded ? 56 : 42} />
           </div>
         </div>
 
         <div
           style={{
-            flex: '1 1 240px',
+            flex: isExpanded ? '1 1 300px' : '1 1 240px',
             background: '#f8fafc',
             border: '1px solid #e2e8f0',
             borderRadius: '8px',
-            padding: '10px 14px',
+            padding: isExpanded ? '12px 18px' : '10px 14px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            transition: 'all 0.2s ease',
           }}
         >
           <div>
-            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>フィニッシュ角</div>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#ea580c', marginTop: '2px' }}>
+            <div style={{ fontSize: isExpanded ? '13px' : '11px', color: '#64748b', fontWeight: 600 }}>フィニッシュ角</div>
+            <div style={{ fontSize: isExpanded ? '16px' : '13px', fontWeight: 700, color: '#ea580c', marginTop: '2px' }}>
               左: {activeRow?.leftFinish.toFixed(1)}° / 右: {activeRow?.rightFinish.toFixed(1)}°
             </div>
           </div>
           <div style={{ paddingLeft: '8px' }}>
-            <Sparkline values={trends.leftFinish} strokeColor="#ea580c" width={180} height={42} />
+            <Sparkline values={trends.leftFinish} strokeColor="#ea580c" width={isExpanded ? 320 : 180} height={isExpanded ? 56 : 42} />
           </div>
         </div>
 
         <div
           style={{
-            flex: '1 1 240px',
+            flex: isExpanded ? '1 1 300px' : '1 1 240px',
             background: '#f8fafc',
             border: '1px solid #e2e8f0',
             borderRadius: '8px',
-            padding: '10px 14px',
+            padding: isExpanded ? '12px 18px' : '10px 14px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            transition: 'all 0.2s ease',
           }}
         >
           <div>
-            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>総スイープ角</div>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#16a34a', marginTop: '2px' }}>
+            <div style={{ fontSize: isExpanded ? '13px' : '11px', color: '#64748b', fontWeight: 600 }}>総スイープ角</div>
+            <div style={{ fontSize: isExpanded ? '16px' : '13px', fontWeight: 700, color: '#16a34a', marginTop: '2px' }}>
               左: {activeRow?.leftSweep.toFixed(1)}° / 右: {activeRow?.rightSweep.toFixed(1)}°
             </div>
           </div>
           <div style={{ paddingLeft: '8px' }}>
-            <Sparkline values={trends.leftSweep} strokeColor="#16a34a" width={180} height={42} />
+            <Sparkline values={trends.leftSweep} strokeColor="#16a34a" width={isExpanded ? 320 : 180} height={isExpanded ? 56 : 42} />
           </div>
         </div>
       </div>

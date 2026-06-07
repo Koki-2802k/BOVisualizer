@@ -386,6 +386,7 @@ function App() {
                     strokes={snapshotStrokes}
                     currentIndex={uiFrame}
                     allDatasetsData={snapshotAllDatasetsData}
+                    isExpanded={expandedPanel === 'timeseries'}
                   />
                 )}
               </Suspense>
