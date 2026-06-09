@@ -495,7 +495,7 @@ const drawTimeSeriesCanvas = (
   if (currentPoint) {
     const { x: cursorX } = worldToCanvas(currentPoint.time, yDomain[0]);
     ctx.save();
-    ctx.strokeStyle = LINE_COLORS.red;
+    ctx.strokeStyle = '#000000';
     ctx.lineWidth = 1.5;
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
