@@ -2,67 +2,67 @@
   "datasets": [
     {
       "id": "sample_1",
-      "label": "サンプル 1",
+      "label": "Stroke1",
       "path": "data/samples/sample_1.csv"
     },
     {
       "id": "sample_2",
-      "label": "サンプル 2",
+      "label": "Stroke2",
       "path": "data/samples/sample_2.csv"
     },
     {
       "id": "sample_3",
-      "label": "サンプル 3",
+      "label": "Stroke3",
       "path": "data/samples/sample_3.csv"
     },
     {
       "id": "sample_4",
-      "label": "サンプル 4",
+      "label": "Stroke4",
       "path": "data/samples/sample_4.csv"
     },
     {
       "id": "sample_5",
-      "label": "サンプル 5",
+      "label": "Stroke5",
       "path": "data/samples/sample_5.csv"
     },
     {
       "id": "sample_6",
-      "label": "サンプル 6",
+      "label": "Stroke6",
       "path": "data/samples/sample_6.csv"
     },
     {
       "id": "sample_7",
-      "label": "サンプル 7",
+      "label": "Stroke7",
       "path": "data/samples/sample_7.csv"
     },
     {
       "id": "sample_8",
-      "label": "サンプル 8",
+      "label": "Stroke8",
       "path": "data/samples/sample_8.csv"
     },
     {
       "id": "sample_9",
-      "label": "サンプル 9",
+      "label": "Stroke9",
       "path": "data/samples/sample_9.csv"
     },
     {
       "id": "sample_10",
-      "label": "サンプル 10",
+      "label": "Stroke10",
       "path": "data/samples/sample_10.csv"
     },
     {
       "id": "sample_11",
-      "label": "サンプル 11",
+      "label": "Stroke11",
       "path": "data/samples/sample_11.csv"
     },
     {
       "id": "sample_12",
-      "label": "サンプル 12",
+      "label": "Stroke12",
       "path": "data/samples/sample_12.csv"
     },
     {
       "id": "sample_13",
-      "label": "サンプル 13",
+      "label": "Stroke13",
       "path": "data/samples/sample_13.csv"
     }
   ],

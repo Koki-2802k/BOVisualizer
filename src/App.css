@@ -187,6 +187,24 @@
   font-family: inherit;
 }
 
+.controls input.fps-input {
+  width: 60px;
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 4px;
+}
+
+.controls select.dataset-select {
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.controls select.dataset-select option {
+  font-weight: 600;
+}
+
 .controls label.seek-label {
   flex-direction: row;
   align-items: center;

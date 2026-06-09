@@ -527,7 +527,11 @@ export default function PlaybackControls({
       </div>
       <label style={{ alignItems: 'center' }}>
         <span style={{ textAlign: 'center', width: '100%' }}>データセット</span>
-        <select value={selectedDatasetId} onChange={(event) => onDatasetChange(event.target.value)}>
+        <select
+          className="dataset-select"
+          value={selectedDatasetId}
+          onChange={(event) => onDatasetChange(event.target.value)}
+        >
           {datasets.map((dataset) => (
             <option key={dataset.id} value={dataset.id}>
               {dataset.label}
@@ -573,6 +577,7 @@ export default function PlaybackControls({
       <label className="fps-label">
         FPS
         <input
+          className="fps-input"
           type="number"
           min={1}
           max={60}
