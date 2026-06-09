@@ -56,7 +56,6 @@ const LINE_COLORS = {
 const PADDING = {
   left: 64,
   right: 24,
-  top: 18,
   bottom: 44,
 } as const;
 
@@ -242,8 +241,13 @@ const drawTimeSeriesCanvas = (
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, box.width, box.height);
 
-  const plotWidth = Math.max(1, box.width - PADDING.left - PADDING.right);
-  const plotHeight = Math.max(1, box.height - PADDING.top - PADDING.bottom);
+  const padding = {
+    ...PADDING,
+    top: isExpanded ? 70 : 45,
+  };
+
+  const plotWidth = Math.max(1, box.width - padding.left - padding.right);
+  const plotHeight = Math.max(1, box.height - padding.top - padding.bottom);
 
   const minTime = points[0]?.time ?? 0;
   const maxTime = points[points.length - 1]?.time ?? 0;
@@ -251,8 +255,8 @@ const drawTimeSeriesCanvas = (
   const ySpan = yDomain[1] - yDomain[0] || 1;
 
   const worldToCanvas = (time: number, value: number) => ({
-    x: PADDING.left + ((time - minTime) / timeSpan) * plotWidth,
-    y: PADDING.top + ((yDomain[1] - value) / ySpan) * plotHeight,
+    x: padding.left + ((time - minTime) / timeSpan) * plotWidth,
+    y: padding.top + ((yDomain[1] - value) / ySpan) * plotHeight,
   });
 
   const timeTickCount = 5;
@@ -267,10 +271,10 @@ const drawTimeSeriesCanvas = (
     const value = minTime + (timeSpan * i) / timeTickCount;
     const { x } = worldToCanvas(value, yDomain[0]);
     ctx.beginPath();
-    ctx.moveTo(x, PADDING.top);
-    ctx.lineTo(x, box.height - PADDING.bottom);
+    ctx.moveTo(x, padding.top);
+    ctx.lineTo(x, box.height - padding.bottom);
     ctx.stroke();
-    drawText(ctx, value.toFixed(1), x, box.height - PADDING.bottom + 18, {
+    drawText(ctx, value.toFixed(1), x, box.height - padding.bottom + 18, {
       align: "center",
       baseline: "top",
       size: 18,
@@ -283,10 +287,10 @@ const drawTimeSeriesCanvas = (
     const value = yDomain[0] + (ySpan * i) / yTickCount;
     const { y: py } = worldToCanvas(minTime, value);
     ctx.beginPath();
-    ctx.moveTo(PADDING.left, py);
-    ctx.lineTo(box.width - PADDING.right, py);
+    ctx.moveTo(padding.left, py);
+    ctx.lineTo(box.width - padding.right, py);
     ctx.stroke();
-    drawText(ctx, value.toFixed(1), PADDING.left - 8, py, {
+    drawText(ctx, value.toFixed(1), padding.left - 8, py, {
       align: "right",
       baseline: "middle",
       size: 18,
@@ -300,14 +304,53 @@ const drawTimeSeriesCanvas = (
 
   // 位相帯描画（解析モード時のみ） ← グリッドの直後、軸線・折れ線より前に描画して解析要素を下層に置く
   if (analysisMode && strokes.length > 0) {
+    // すべてのストロークを走査して最もフレーム数の多い（長い） recovery セグメントを特定する
+    let longestRecoverySeg: typeof strokes[number]['phases'][number] | null = null;
+    let maxRecoveryFrames = -1;
     strokes.forEach((stroke) => {
+      stroke.phases.forEach((seg) => {
+        if (seg.phase === 'recovery') {
+          const frameCount = seg.endFrame - seg.startFrame;
+          if (frameCount > maxRecoveryFrames) {
+            maxRecoveryFrames = frameCount;
+            longestRecoverySeg = seg;
+          }
+        }
+      });
+    });
+
+    strokes.forEach((stroke) => {
+      // 1つのストローク内で catch と finish の X 座標を特定し、近接時の文字オフセットを計算
+      let xCatch: number | null = null;
+      let xFinish: number | null = null;
+
+      stroke.phases.forEach((seg) => {
+        const startPt = points[Math.min(seg.startFrame, points.length - 1)];
+        if (!startPt) return;
+        const x = padding.left + ((startPt.time - minTime) / timeSpan) * plotWidth;
+        if (seg.phase === 'catch') xCatch = x;
+        if (seg.phase === 'finish') xFinish = x;
+      });
+
+      let cOffset = 0;
+      let fOffset = 0;
+      if (xCatch !== null && xFinish !== null) {
+        const threshold = isExpanded ? 32 : 24;
+        const diff = xFinish - xCatch;
+        if (diff < threshold) {
+          const needed = (threshold - diff) / 2;
+          cOffset = -needed;
+          fOffset = needed;
+        }
+      }
+
       stroke.phases.forEach((seg) => {
         const startPt = points[Math.min(seg.startFrame, points.length - 1)];
         const endPt = points[Math.min(seg.endFrame, points.length - 1)];
         if (!startPt || !endPt) return;
 
-        const x1 = PADDING.left + ((startPt.time - minTime) / timeSpan) * plotWidth;
-        const x2 = PADDING.left + ((endPt.time - minTime) / timeSpan) * plotWidth;
+        const x1 = padding.left + ((startPt.time - minTime) / timeSpan) * plotWidth;
+        const x2 = padding.left + ((endPt.time - minTime) / timeSpan) * plotWidth;
         const bandWidth = x2 - x1;
 
         // 見せ方の工夫: キャッチとフィニッシュは短いので最小幅を保証し、色を強調する
@@ -327,7 +370,7 @@ const drawTimeSeriesCanvas = (
         if (showStrokePhases) {
           ctx.save();
           ctx.fillStyle = fillColor;
-          ctx.fillRect(drawX, PADDING.top, drawW, plotHeight);
+          ctx.fillRect(drawX, padding.top, drawW, plotHeight);
           ctx.restore();
         }
 
@@ -338,8 +381,8 @@ const drawTimeSeriesCanvas = (
             ctx.strokeStyle = seg.phase === 'catch' ? 'rgba(37,99,235,0.7)' : 'rgba(234,88,12,0.7)';
             ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.moveTo(x1, PADDING.top);
-            ctx.lineTo(x1, PADDING.top + plotHeight);
+            ctx.moveTo(x1, padding.top);
+            ctx.lineTo(x1, padding.top + plotHeight);
             ctx.stroke();
           } else {
             // ドライブとリカバリーの開始地点は点線で静かに描画
@@ -347,8 +390,8 @@ const drawTimeSeriesCanvas = (
             ctx.lineWidth = 1;
             ctx.setLineDash([3, 3]);
             ctx.beginPath();
-            ctx.moveTo(x1, PADDING.top);
-            ctx.lineTo(x1, PADDING.top + plotHeight);
+            ctx.moveTo(x1, padding.top);
+            ctx.lineTo(x1, padding.top + plotHeight);
             ctx.stroke();
           }
           ctx.restore();
@@ -356,10 +399,12 @@ const drawTimeSeriesCanvas = (
 
         if (showStrokePhases && (seg.phase === 'catch' || seg.phase === 'finish')) {
           ctx.save();
-          // 上部にシンボルと文字マーカーを表示
+          const isCatch = seg.phase === 'catch';
           const symbolSize = isExpanded ? 8 : 4;
-          const symbolY = PADDING.top + (isExpanded ? 16 : 8);
-          ctx.fillStyle = seg.phase === 'catch' ? '#2563eb' : '#ea580c';
+          
+          // CとFの高さ座標はそろえる
+          const symbolY = padding.top - (isExpanded ? 16 : 8);
+          ctx.fillStyle = isCatch ? '#2563eb' : '#ea580c';
           
           // 逆三角形を描画
           ctx.beginPath();
@@ -369,13 +414,14 @@ const drawTimeSeriesCanvas = (
           ctx.closePath();
           ctx.fill();
 
-          // ラベル文字（C / F）
-          drawText(ctx, seg.phase === 'catch' ? 'C' : 'F', x1, symbolY - (isExpanded ? 12 : 8), {
+          // ラベル文字（C / F）は近接時に左右にオフセットして重なりを回避
+          const textX = x1 + (isCatch ? cOffset : fOffset);
+          drawText(ctx, isCatch ? 'C' : 'F', textX, symbolY - (isExpanded ? 12 : 8), {
             align: 'center',
             baseline: 'bottom',
-            size: isExpanded ? 32 : 16,
+            size: isExpanded ? 32 : 24,
             bold: true,
-            color: seg.phase === 'catch' ? '#1d4ed8' : '#c2410c'
+            color: isCatch ? '#1d4ed8' : '#c2410c'
           });
           ctx.restore();
         }
@@ -383,7 +429,7 @@ const drawTimeSeriesCanvas = (
         // 凡例に代わる見せ方の工夫: ドライブ/リカバリー区間の上部に横線とテキストラベルを静かに表示
         if (showStrokePhases && (seg.phase === 'drive' || seg.phase === 'recovery')) {
           const midX = x1 + bandWidth / 2;
-          const labelY = PADDING.top + (isExpanded ? 24 : 14);
+          const labelY = padding.top + (isExpanded ? 20 : 10);
           const isDrive = seg.phase === 'drive';
 
           ctx.save();
@@ -397,11 +443,14 @@ const drawTimeSeriesCanvas = (
           const labelText = isDrive ? 'Drive' : 'Recovery';
           const labelColor = isDrive ? '#16a34a' : '#64748b';
           
-          ctx.font = `bold ${isExpanded ? 32 : 16}px Arial, sans-serif`;
+          ctx.font = `bold ${isExpanded ? 32 : 24}px Arial, sans-serif`;
           const textWidth = ctx.measureText(labelText).width;
-          const minWidthForLabel = textWidth + (isExpanded ? 32 : 16);
+          const minWidthForLabel = textWidth + (isExpanded ? 32 : 24);
 
-          if (bandWidth > minWidthForLabel) {
+          // ドライブは常に、リカバリーは最長の箇所のみテキストを表示
+          const shouldShowText = isDrive || (seg === longestRecoverySeg);
+
+          if (shouldShowText && bandWidth > minWidthForLabel) {
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(
               midX - textWidth / 2 - (isExpanded ? 12 : 6),
@@ -413,7 +462,7 @@ const drawTimeSeriesCanvas = (
             drawText(ctx, labelText, midX, labelY, {
               align: 'center',
               baseline: 'middle',
-              size: isExpanded ? 32 : 16,
+              size: isExpanded ? 32 : 24,
               bold: true,
               color: labelColor
             });
@@ -428,12 +477,12 @@ const drawTimeSeriesCanvas = (
   ctx.strokeStyle = LINE_COLORS.axis;
   ctx.lineWidth = 1.25;
   ctx.beginPath();
-  ctx.moveTo(PADDING.left, PADDING.top);
-  ctx.lineTo(PADDING.left, box.height - PADDING.bottom);
+  ctx.moveTo(padding.left, padding.top);
+  ctx.lineTo(padding.left, box.height - padding.bottom);
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(PADDING.left, box.height - PADDING.bottom);
-  ctx.lineTo(box.width - PADDING.right, box.height - PADDING.bottom);
+  ctx.moveTo(padding.left, box.height - padding.bottom);
+  ctx.lineTo(box.width - padding.right, box.height - padding.bottom);
   ctx.stroke();
   ctx.restore();
 
@@ -450,8 +499,8 @@ const drawTimeSeriesCanvas = (
     ctx.lineWidth = 1.5;
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
-    ctx.moveTo(cursorX, PADDING.top);
-    ctx.lineTo(cursorX, box.height - PADDING.bottom);
+    ctx.moveTo(cursorX, padding.top);
+    ctx.lineTo(cursorX, box.height - padding.bottom);
     ctx.stroke();
     ctx.restore();
 
@@ -465,7 +514,7 @@ const drawTimeSeriesCanvas = (
         ctx.lineWidth = 1.5;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.moveTo(PADDING.left, y);
+        ctx.moveTo(padding.left, y);
         ctx.lineTo(x, y);
         ctx.stroke();
         ctx.restore();
@@ -477,7 +526,7 @@ const drawTimeSeriesCanvas = (
         ctx.fill();
         ctx.restore();
 
-        const isNearRight = x > box.width - PADDING.right - 100;
+        const isNearRight = x > box.width - padding.right - 100;
         const textX = isNearRight ? x - 10 : x + 10;
         const textY = y - 10;
         const textAlign = isNearRight ? "right" : "left";
@@ -500,8 +549,8 @@ const drawTimeSeriesCanvas = (
       { label: "gyroy", color: LINE_COLORS.green },
       { label: "gyroz", color: LINE_COLORS.red },
     ];
-    const startX = box.width - PADDING.right - 84;
-    let legendY = PADDING.top + 12;
+    const startX = box.width - padding.right - 84;
+    let legendY = padding.top + 12;
     legend.forEach((item) => {
       ctx.save();
       ctx.fillStyle = item.color;
@@ -520,7 +569,7 @@ const drawTimeSeriesCanvas = (
 
 
 
-  drawText(ctx, "Time (s)", PADDING.left + plotWidth / 2, box.height - 6, {
+  drawText(ctx, "Time (s)", padding.left + plotWidth / 2, box.height - 6, {
     align: "center",
     baseline: "bottom",
     size: 14,
