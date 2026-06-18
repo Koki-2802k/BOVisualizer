@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense, useState, useRef, useCallback } from 'react';
+import { useEffect, lazy, Suspense, useState, useRef, useCallback, useMemo } from 'react';
 import PlaybackControls from './components/PlaybackControls';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useAnimationClock } from './hooks/useAnimationClock';
@@ -37,6 +37,8 @@ function App() {
     analysisMode,
     showStrokePhases,
     showStrokeMetrics,
+    speedSource,
+    setSpeedSource,
     setDatasets,
     setSelectedDatasetId,
     setIsPlaying,
@@ -61,11 +63,20 @@ function App() {
     frames,
     strokes,
     metrics,
+    velocity,
     allDatasetsData,
     hasAnyStrokes,
     loading,
     error,
   } = useAnalysis(datasetState);
+
+  // 速度グラフのソース選択。積分値が利用不可（GPS アンカー不足）なら実測値へ自動フォールバック。
+  const integratedUsable = speedSource === 'integrated' && (velocity?.usable ?? false);
+  const effectiveSpeedSource = integratedUsable ? 'integrated' : 'measured';
+  const speedSeries = useMemo<(number | null)[] | undefined>(() => {
+    if (!velocity) return undefined;
+    return integratedUsable ? velocity.integrated : velocity.measured;
+  }, [velocity, integratedUsable]);
 
   useEffect(() => {
     const customCount = Object.keys(customDatasets).length;
@@ -255,6 +266,9 @@ function App() {
         onShowStrokePhasesChange={setShowStrokePhases}
         showStrokeMetrics={showStrokeMetrics}
         onShowStrokeMetricsChange={setShowStrokeMetrics}
+        speedSource={speedSource}
+        onSpeedSourceChange={setSpeedSource}
+        speedIntegrationUsable={velocity?.usable ?? false}
         onReload={handleReload}
       />
       <div className="dashboard-area">
@@ -392,6 +406,8 @@ function App() {
                       analysisMode={analysisMode}
                       showStrokePhases={showStrokePhases}
                       isExpanded={expandedPanel === 'timeseries'}
+                      speedSeries={speedSeries}
+                      speedSource={effectiveSpeedSource}
                     />
                   ) : (
                     <StrokeMetricsTable

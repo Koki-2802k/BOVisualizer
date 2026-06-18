@@ -7,11 +7,14 @@ import { loadAllManifestDatasets } from '../data/datasetLoader';
 import type { RowingFrame, DerivedMetrics } from '../types/rowing';
 import type { StrokeSegment } from '../types/strokeDetect';
 import type { DatasetStrokeData } from '../components/StrokeMetricsTable';
+import type { VelocityResult } from '../utils/velocityIntegration';
 
 export interface UseAnalysisResult {
   frames: RowingFrame[];
   strokes: StrokeSegment[];
   metrics: DerivedMetrics | null;
+  /** 加速度積分による速度（実測値とのフォールバック判定込み） */
+  velocity: VelocityResult | null;
   allDatasetsData: DatasetStrokeData[] | undefined;
   hasAnyStrokes: boolean;
   loading: boolean;
@@ -122,6 +125,12 @@ export function useAnalysis(datasetState: any): UseAnalysisResult {
     [activeDataset],
   );
 
+  // 加速度積分による速度（getAnalysis は frames 参照でキャッシュ済み）
+  const velocity = useMemo<VelocityResult | null>(
+    () => (frames.length > 0 ? (getAnalysis(frames).extra.get('velocity') as VelocityResult) : null),
+    [frames],
+  );
+
   const error =
     datasetState.error ||
     (datasets.length === 0
@@ -133,6 +142,7 @@ export function useAnalysis(datasetState: any): UseAnalysisResult {
     frames,
     strokes,
     metrics,
+    velocity,
     allDatasetsData,
     hasAnyStrokes,
     loading,

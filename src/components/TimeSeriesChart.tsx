@@ -4,6 +4,8 @@ import type { StrokeSegment } from "../types/strokeDetect";
 
 export type GraphMode = "acceleration" | "gyro" | "speed";
 
+export type SpeedSource = "measured" | "integrated";
+
 type Props = {
   frames: RowingFrame[];
   currentIndex: number;
@@ -14,6 +16,13 @@ type Props = {
   analysisMode?: boolean;
   showStrokePhases?: boolean;
   isExpanded?: boolean;
+  /**
+   * 速度モードで描画する速度系列 [m/s]（arrayIndex 整列）。
+   * 未指定時は frame.speed（実測値）にフォールバックする。
+   */
+  speedSeries?: (number | null)[];
+  /** 速度系列のソース種別（凡例ラベルに使用） */
+  speedSource?: SpeedSource;
 };
 
 type CanvasBox = {
@@ -68,7 +77,11 @@ const toNumber = (value: unknown): number | null => {
   return null;
 };
 
-function buildTimeSeriesData(frames: RowingFrame[], mode: GraphMode) {
+function buildTimeSeriesData(
+  frames: RowingFrame[],
+  mode: GraphMode,
+  speedSeries?: (number | null)[],
+) {
   let startMs: number | null = null;
   const points = frames.map((frame, index) => {
     const rawTime = frame.time_s ?? frame.time;
@@ -82,13 +95,17 @@ function buildTimeSeriesData(frames: RowingFrame[], mode: GraphMode) {
         time = (parsedMs - startMs) / 1000;
       }
     }
+    // 速度は指定された系列（積分値など）を優先し、無ければ実測値にフォールバック
+    const speed = speedSeries
+      ? toNumber(speedSeries[index])
+      : toNumber(frame.speed);
     return {
       time,
       accx: toNumber(frame.accx),
       gyrox: toNumber(frame.gyrox),
       gyroy: toNumber(frame.gyroy),
       gyroz: toNumber(frame.gyroz),
-      speed: toNumber(frame.speed),
+      speed,
     };
   });
   return { points, yDomain: Y_DOMAINS[mode] };
@@ -148,7 +165,7 @@ const resolveCanvasBox = (wrapper: HTMLDivElement, canvasSize: RefObject<CanvasS
   return measureCanvasBox(wrapper);
 };
 
-const getModeSeries = (point: TimeSeriesPoint, mode: GraphMode) => {
+const getModeSeries = (point: TimeSeriesPoint, mode: GraphMode, speedLabel = "speed") => {
   if (mode === "acceleration") {
     return [{ key: "accx", value: point.accx, color: LINE_COLORS.blue, label: "accx" }];
   }
@@ -159,7 +176,7 @@ const getModeSeries = (point: TimeSeriesPoint, mode: GraphMode) => {
       { key: "gyroz", value: point.gyroz, color: LINE_COLORS.red, label: "gyroz" },
     ];
   }
-  return [{ key: "speed", value: point.speed, color: LINE_COLORS.blue, label: "speed" }];
+  return [{ key: "speed", value: point.speed, color: LINE_COLORS.blue, label: speedLabel }];
 };
 
 const getUnit = (mode: GraphMode): string => {
@@ -228,6 +245,7 @@ const drawTimeSeriesCanvas = (
   analysisMode: boolean = false,
   showStrokePhases: boolean = true,
   isExpanded: boolean = false,
+  speedLabel: string = "speed",
 ) => {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) {
@@ -543,13 +561,17 @@ const drawTimeSeriesCanvas = (
     });
   }
 
-  if (mode === "gyro") {
-    const legend = [
-      { label: "gyrox", color: LINE_COLORS.blue },
-      { label: "gyroy", color: LINE_COLORS.green },
-      { label: "gyroz", color: LINE_COLORS.red },
-    ];
-    const startX = box.width - padding.right - 84;
+  if (mode === "gyro" || mode === "speed") {
+    const legend =
+      mode === "gyro"
+        ? [
+            { label: "gyrox", color: LINE_COLORS.blue },
+            { label: "gyroy", color: LINE_COLORS.green },
+            { label: "gyroz", color: LINE_COLORS.red },
+          ]
+        : [{ label: speedLabel, color: LINE_COLORS.blue }];
+    const legendWidth = mode === "speed" ? 140 : 84;
+    const startX = box.width - padding.right - legendWidth;
     let legendY = padding.top + 12;
     legend.forEach((item) => {
       ctx.save();
@@ -585,13 +607,19 @@ export default function TimeSeriesChart({
   strokes = [],
   analysisMode = false,
   showStrokePhases = true,
-  isExpanded = false
+  isExpanded = false,
+  speedSeries,
+  speedSource = "measured",
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasSizeRef = useRef<CanvasSize>({ w: 0, h: 0 });
   const animationFrameRef = useRef<number | null>(null);
-  const { points, yDomain } = useMemo(() => buildTimeSeriesData(frames, mode), [frames, mode]);
+  const { points, yDomain } = useMemo(
+    () => buildTimeSeriesData(frames, mode, speedSeries),
+    [frames, mode, speedSeries],
+  );
+  const speedLabel = speedSource === "integrated" ? "speed (積分)" : "speed (実測)";
 
   const safeIndex = Math.max(0, Math.min(currentIndex, points.length - 1));
   const latestRenderStateRef = useRef({
@@ -603,6 +631,7 @@ export default function TimeSeriesChart({
     analysisMode,
     showStrokePhases,
     isExpanded,
+    speedLabel,
   });
   latestRenderStateRef.current = {
     points,
@@ -613,6 +642,7 @@ export default function TimeSeriesChart({
     analysisMode,
     showStrokePhases,
     isExpanded,
+    speedLabel,
   };
 
   const cancelScheduledDraw = () => {
@@ -652,6 +682,7 @@ export default function TimeSeriesChart({
       analysisMode: latestAnalysisMode,
       showStrokePhases: latestShowStrokePhases,
       isExpanded: latestIsExpanded,
+      speedLabel: latestSpeedLabel,
     } = latestRenderStateRef.current;
     resizeCanvas(canvas, box, canvasSizeRef);
     drawTimeSeriesCanvas(
@@ -665,6 +696,7 @@ export default function TimeSeriesChart({
       latestAnalysisMode,
       latestShowStrokePhases,
       latestIsExpanded,
+      latestSpeedLabel,
     );
   };
 
@@ -719,8 +751,9 @@ export default function TimeSeriesChart({
       analysisMode,
       showStrokePhases,
       isExpanded,
+      speedLabel,
     );
-  }, [points, safeIndex, mode, yDomain, strokes, analysisMode, showStrokePhases, isExpanded]);
+  }, [points, safeIndex, mode, yDomain, strokes, analysisMode, showStrokePhases, isExpanded, speedLabel]);
 
   if (frames.length === 0 || points.length === 0) {
     return (

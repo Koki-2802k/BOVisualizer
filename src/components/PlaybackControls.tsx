@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import type { DatasetCsv, DatasetManifestItem, RowingFrame } from '../types/rowing';
 import type { GraphMode } from './TimeSeriesChart';
+import type { SpeedSource } from '../store/slices/viewSlice';
 import { parseRowingCsv } from '../utils/csvParser';
 
 const toNumber = (value: unknown): number | null => {
@@ -59,6 +60,11 @@ type PlaybackControlsProps = {
   onShowStrokePhasesChange?: (show: boolean) => void;
   showStrokeMetrics?: boolean;
   onShowStrokeMetricsChange?: (show: boolean) => void;
+  /** 速度グラフのソース（実測値 / 加速度積分値） */
+  speedSource?: SpeedSource;
+  onSpeedSourceChange?: (source: SpeedSource) => void;
+  /** 積分値が利用可能か（GPS アンカー >= 2）。false なら積分選択時に注記を表示 */
+  speedIntegrationUsable?: boolean;
   /** リロード（手動・自動）完了時に呼ばれるコールバック */
   onReload?: () => void;
 };
@@ -97,6 +103,9 @@ export default function PlaybackControls({
   onShowStrokePhasesChange,
   showStrokeMetrics = true,
   onShowStrokeMetricsChange,
+  speedSource = 'integrated',
+  onSpeedSourceChange,
+  speedIntegrationUsable = true,
   onReload,
 }: PlaybackControlsProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -439,6 +448,35 @@ export default function PlaybackControls({
                 <option value="gyro" style={{ backgroundColor: '#1e293b' }}>ジャイロ</option>
                 <option value="speed" style={{ backgroundColor: '#1e293b' }}>速度</option>
               </select>
+            </label>
+
+            <label className="option-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#e2e8f0', fontSize: '20px', textAlign: 'left', minWidth: 'auto', fontWeight: 500, margin: '8px 0 0 0' }}>
+              <span style={{ userSelect: 'none' }}>速度グラフのソース</span>
+              <select
+                value={speedSource}
+                onChange={(e) => onSpeedSourceChange?.(e.target.value as SpeedSource)}
+                style={{
+                  minHeight: '36px',
+                  padding: '4px 12px',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                  color: '#f8fafc',
+                  fontSize: '18px',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  width: '100%',
+                  outline: 'none',
+                }}
+              >
+                <option value="integrated" style={{ backgroundColor: '#1e293b' }}>積分値（加速度・推奨）</option>
+                <option value="measured" style={{ backgroundColor: '#1e293b' }}>実測値（GPS・1Hz）</option>
+              </select>
+              {speedSource === 'integrated' && !speedIntegrationUsable && (
+                <span style={{ fontSize: '15px', color: '#fbbf24', fontWeight: 400, lineHeight: 1.4 }}>
+                  ※ GPS アンカーが不足しているため、実測値を表示しています。
+                </span>
+              )}
             </label>
 
             <label className="option-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#e2e8f0', fontSize: '20px', textAlign: 'left', minWidth: 'auto', fontWeight: 500, margin: '8px 0 0 0' }}>

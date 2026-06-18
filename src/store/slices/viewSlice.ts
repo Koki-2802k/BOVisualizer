@@ -8,6 +8,9 @@
 import type { StateCreator } from 'zustand';
 import type { GraphMode } from '../../components/TimeSeriesChart';
 
+/** 速度グラフのデータソース: 実測(GPS 1Hz) / 積分(加速度積分) */
+export type SpeedSource = 'measured' | 'integrated';
+
 export type ViewSlice = {
   oarSide: 'right' | 'left';
   graphMode: GraphMode;
@@ -17,6 +20,8 @@ export type ViewSlice = {
   analysisMode: boolean;
   showStrokePhases: boolean;
   showStrokeMetrics: boolean;
+  /** 速度グラフのソース（既定: 積分値） */
+  speedSource: SpeedSource;
   setOarSide: (side: 'right' | 'left') => void;
   setGraphMode: (graphMode: GraphMode) => void;
   setInitialOarSide: (side: 'right' | 'left') => void;
@@ -25,6 +30,7 @@ export type ViewSlice = {
   setAnalysisMode: (enabled: boolean) => void;
   setShowStrokePhases: (show: boolean) => void;
   setShowStrokeMetrics: (show: boolean) => void;
+  setSpeedSource: (source: SpeedSource) => void;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,6 +43,7 @@ export const createViewSlice: StateCreator<any, [], [], ViewSlice> = (set) => ({
   analysisMode: true,
   showStrokePhases: true,
   showStrokeMetrics: true,
+  speedSource: 'integrated',
 
   setOarSide: (oarSide) => set({ oarSide }),
   setGraphMode: (graphMode) => set({ graphMode }),
@@ -46,4 +53,5 @@ export const createViewSlice: StateCreator<any, [], [], ViewSlice> = (set) => ({
   setAnalysisMode: (analysisMode) => set({ analysisMode }),
   setShowStrokePhases: (showStrokePhases) => set({ showStrokePhases }),
   setShowStrokeMetrics: (showStrokeMetrics) => set({ showStrokeMetrics }),
+  setSpeedSource: (speedSource) => set({ speedSource }),
 });

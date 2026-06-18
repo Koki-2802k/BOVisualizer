@@ -11,8 +11,10 @@
 export type { Analyzer, AnalysisInput } from './types';
 export { strokeAnalyzer } from './strokeAnalyzer';
 export { metricsAnalyzer } from './metricsAnalyzer';
+export { velocityAnalyzer } from './velocityAnalyzer';
 
 import type { Analyzer } from './types';
+import { velocityAnalyzer } from './velocityAnalyzer';
 
 /**
  * 組み込み以外の追加アナライザー登録リスト。
@@ -28,5 +30,6 @@ import type { Analyzer } from './types';
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const ANALYZERS: Analyzer<any>[] = [
+  velocityAnalyzer, // 加速度積分による速度推定 → extra.get('velocity')
   // ← 新しいアナライザーをここに追加
 ];
