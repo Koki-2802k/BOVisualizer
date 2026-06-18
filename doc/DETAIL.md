@@ -5,9 +5,9 @@
 > **関連資料**: [HISTORY.md](./HISTORY.md) / [IDEA_NEWFUNC.md](./IDEA_NEWFUNC.md) / [README.md](../README.md)
 
 ---
-
+nikoniko
 ## 目次
-
+o
 1. [システム概要](#1-システム概要)
 2. [技術スタック](#2-技術スタック)
 3. [ディレクトリ構造と役割](#3-ディレクトリ構造と役割)
