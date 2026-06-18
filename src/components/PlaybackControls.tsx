@@ -444,9 +444,9 @@ export default function PlaybackControls({
                   outline: 'none',
                 }}
               >
+                <option value="speed" style={{ backgroundColor: '#1e293b' }}>速度</option>
                 <option value="acceleration" style={{ backgroundColor: '#1e293b' }}>加速度</option>
                 <option value="gyro" style={{ backgroundColor: '#1e293b' }}>ジャイロ</option>
-                <option value="speed" style={{ backgroundColor: '#1e293b' }}>速度</option>
               </select>
             </label>
 
@@ -642,6 +642,13 @@ export default function PlaybackControls({
       <div className="graph-mode-group" role="group" aria-label="グラフ表示モード">
         <button
           type="button"
+          className={graphMode === 'speed' ? 'mode-active' : ''}
+          onClick={() => handleGraphModeChange('speed')}
+        >
+          速度
+        </button>
+        <button
+          type="button"
           className={graphMode === 'acceleration' ? 'mode-active' : ''}
           onClick={() => handleGraphModeChange('acceleration')}
         >
@@ -653,13 +660,6 @@ export default function PlaybackControls({
           onClick={() => handleGraphModeChange('gyro')}
         >
           ジャイロ
-        </button>
-        <button
-          type="button"
-          className={graphMode === 'speed' ? 'mode-active' : ''}
-          onClick={() => handleGraphModeChange('speed')}
-        >
-          速度
         </button>
       </div>
 

@@ -245,7 +245,6 @@ const drawTimeSeriesCanvas = (
   analysisMode: boolean = false,
   showStrokePhases: boolean = true,
   isExpanded: boolean = false,
-  speedLabel: string = "speed",
 ) => {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) {
@@ -561,16 +560,13 @@ const drawTimeSeriesCanvas = (
     });
   }
 
-  if (mode === "gyro" || mode === "speed") {
-    const legend =
-      mode === "gyro"
-        ? [
-            { label: "gyrox", color: LINE_COLORS.blue },
-            { label: "gyroy", color: LINE_COLORS.green },
-            { label: "gyroz", color: LINE_COLORS.red },
-          ]
-        : [{ label: speedLabel, color: LINE_COLORS.blue }];
-    const legendWidth = mode === "speed" ? 140 : 84;
+  if (mode === "gyro") {
+    const legend = [
+      { label: "gyrox", color: LINE_COLORS.blue },
+      { label: "gyroy", color: LINE_COLORS.green },
+      { label: "gyroz", color: LINE_COLORS.red },
+    ];
+    const legendWidth = 84;
     const startX = box.width - padding.right - legendWidth;
     let legendY = padding.top + 12;
     legend.forEach((item) => {
@@ -609,7 +605,6 @@ export default function TimeSeriesChart({
   showStrokePhases = true,
   isExpanded = false,
   speedSeries,
-  speedSource = "measured",
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -619,8 +614,6 @@ export default function TimeSeriesChart({
     () => buildTimeSeriesData(frames, mode, speedSeries),
     [frames, mode, speedSeries],
   );
-  const speedLabel = speedSource === "integrated" ? "speed (積分)" : "speed (実測)";
-
   const safeIndex = Math.max(0, Math.min(currentIndex, points.length - 1));
   const latestRenderStateRef = useRef({
     points,
@@ -631,7 +624,6 @@ export default function TimeSeriesChart({
     analysisMode,
     showStrokePhases,
     isExpanded,
-    speedLabel,
   });
   latestRenderStateRef.current = {
     points,
@@ -642,7 +634,6 @@ export default function TimeSeriesChart({
     analysisMode,
     showStrokePhases,
     isExpanded,
-    speedLabel,
   };
 
   const cancelScheduledDraw = () => {
@@ -682,7 +673,6 @@ export default function TimeSeriesChart({
       analysisMode: latestAnalysisMode,
       showStrokePhases: latestShowStrokePhases,
       isExpanded: latestIsExpanded,
-      speedLabel: latestSpeedLabel,
     } = latestRenderStateRef.current;
     resizeCanvas(canvas, box, canvasSizeRef);
     drawTimeSeriesCanvas(
@@ -696,7 +686,6 @@ export default function TimeSeriesChart({
       latestAnalysisMode,
       latestShowStrokePhases,
       latestIsExpanded,
-      latestSpeedLabel,
     );
   };
 
@@ -751,9 +740,8 @@ export default function TimeSeriesChart({
       analysisMode,
       showStrokePhases,
       isExpanded,
-      speedLabel,
     );
-  }, [points, safeIndex, mode, yDomain, strokes, analysisMode, showStrokePhases, isExpanded, speedLabel]);
+  }, [points, safeIndex, mode, yDomain, strokes, analysisMode, showStrokePhases, isExpanded]);
 
   if (frames.length === 0 || points.length === 0) {
     return (
