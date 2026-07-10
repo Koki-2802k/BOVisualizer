@@ -5,7 +5,7 @@
 > **関連資料**: [HISTORY.md](./HISTORY.md) / [IDEA_NEWFUNC.md](./IDEA_NEWFUNC.md) / [README.md](../README.md)
 
 ---
-nikoniko
+
 ## 目次
 o
 1. [システム概要](#1-システム概要)
