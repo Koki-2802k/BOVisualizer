@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, type RefObject } from "react";
+import { useCallback, useMemo } from "react";
 import type { RowingFrame } from "../types/rowing";
 import type { StrokeSegment } from "../types/strokeDetect";
 import type { GraphMode, SpeedSource } from "../types/view";
+import { useResponsiveCanvas, type CanvasBox } from "../hooks/useResponsiveCanvas";
 
 export type { GraphMode, SpeedSource } from "../types/view";
 
@@ -22,16 +23,6 @@ type Props = {
   speedSeries?: (number | null)[];
   /** 速度系列のソース種別（凡例ラベルに使用） */
   speedSource?: SpeedSource;
-};
-
-type CanvasBox = {
-  width: number;
-  height: number;
-};
-
-type CanvasSize = {
-  w: number;
-  h: number;
 };
 
 type TimeSeriesPoint = {
@@ -125,43 +116,6 @@ const drawText = (
   ctx.textBaseline = options.baseline ?? "alphabetic";
   ctx.fillText(text, x, y);
   ctx.restore();
-};
-
-const resizeCanvas = (canvas: HTMLCanvasElement, box: CanvasBox, canvasSize: RefObject<CanvasSize>) => {
-  const nextWidth = Math.max(1, Math.round(box.width));
-  const nextHeight = Math.max(1, Math.round(box.height));
-  if (canvasSize.current.w === nextWidth && canvasSize.current.h === nextHeight) {
-    return false;
-  }
-
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = Math.max(1, Math.round(nextWidth * dpr));
-  canvas.height = Math.max(1, Math.round(nextHeight * dpr));
-  canvas.style.width = `${nextWidth}px`;
-  canvas.style.height = `${nextHeight}px`;
-  canvasSize.current = { w: nextWidth, h: nextHeight };
-  return true;
-};
-
-const measureCanvasBox = (wrapper: HTMLDivElement): CanvasBox | null => {
-  const rect = wrapper.getBoundingClientRect();
-  if (rect.width <= 0 || rect.height <= 0) {
-    return null;
-  }
-
-  return {
-    width: Math.round(rect.width),
-    height: Math.round(rect.height),
-  };
-};
-
-const resolveCanvasBox = (wrapper: HTMLDivElement, canvasSize: RefObject<CanvasSize>): CanvasBox | null => {
-  const { w, h } = canvasSize.current;
-  if (w > 0 && h > 0) {
-    return { width: w, height: h };
-  }
-
-  return measureCanvasBox(wrapper);
 };
 
 const getModeSeries = (point: TimeSeriesPoint, mode: GraphMode, speedLabel = "speed") => {
@@ -605,129 +559,12 @@ export default function TimeSeriesChart({
   isExpanded = false,
   speedSeries,
 }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const canvasSizeRef = useRef<CanvasSize>({ w: 0, h: 0 });
-  const animationFrameRef = useRef<number | null>(null);
   const { points, yDomain } = useMemo(
     () => buildTimeSeriesData(frames, mode, speedSeries),
     [frames, mode, speedSeries],
   );
   const safeIndex = Math.max(0, Math.min(currentIndex, points.length - 1));
-  const latestRenderStateRef = useRef({
-    points,
-    safeIndex,
-    mode,
-    yDomain,
-    strokes,
-    analysisMode,
-    showStrokePhases,
-    isExpanded,
-  });
-  latestRenderStateRef.current = {
-    points,
-    safeIndex,
-    mode,
-    yDomain,
-    strokes,
-    analysisMode,
-    showStrokePhases,
-    isExpanded,
-  };
-
-  const cancelScheduledDraw = () => {
-    if (animationFrameRef.current !== null) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-  };
-
-  const scheduleDraw = (draw: () => void) => {
-    cancelScheduledDraw();
-    animationFrameRef.current = requestAnimationFrame(() => {
-      animationFrameRef.current = null;
-      draw();
-    });
-  };
-
-  const drawLatest = () => {
-    const canvas = canvasRef.current;
-    const wrapper = wrapperRef.current;
-    if (!canvas || !wrapper) {
-      return;
-    }
-
-    const box = resolveCanvasBox(wrapper, canvasSizeRef);
-    if (!box) {
-      scheduleDraw(drawLatest);
-      return;
-    }
-
-    const {
-      points: latestPoints,
-      safeIndex: latestSafeIndex,
-      mode: latestMode,
-      yDomain: latestYDomain,
-      strokes: latestStrokes,
-      analysisMode: latestAnalysisMode,
-      showStrokePhases: latestShowStrokePhases,
-      isExpanded: latestIsExpanded,
-    } = latestRenderStateRef.current;
-    resizeCanvas(canvas, box, canvasSizeRef);
-    drawTimeSeriesCanvas(
-      canvas,
-      box,
-      latestPoints,
-      latestSafeIndex,
-      latestMode,
-      latestYDomain,
-      latestStrokes,
-      latestAnalysisMode,
-      latestShowStrokePhases,
-      latestIsExpanded,
-    );
-  };
-
-  useEffect(() => {
-    if (!canvasRef.current || !wrapperRef.current) {
-      return;
-    }
-
-    drawLatest();
-
-    if (typeof ResizeObserver === "undefined") {
-      return () => {
-        cancelScheduledDraw();
-      };
-    }
-
-    const observer = new ResizeObserver(() => {
-      // キャッシュを破棄して必ず再計測させる
-      canvasSizeRef.current = { w: 0, h: 0 };
-      drawLatest();
-    });
-    observer.observe(wrapperRef.current);
-
-    return () => {
-      observer.disconnect();
-      cancelScheduledDraw();
-    };
-  }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const wrapper = wrapperRef.current;
-    if (!canvas || !wrapper) {
-      return;
-    }
-
-    const box = resolveCanvasBox(wrapper, canvasSizeRef);
-    if (!box) {
-      scheduleDraw(drawLatest);
-      return;
-    }
-
-    resizeCanvas(canvas, box, canvasSizeRef);
+  const renderTimeSeries = useCallback((canvas: HTMLCanvasElement, box: CanvasBox) => {
     drawTimeSeriesCanvas(
       canvas,
       box,
@@ -741,6 +578,7 @@ export default function TimeSeriesChart({
       isExpanded,
     );
   }, [points, safeIndex, mode, yDomain, strokes, analysisMode, showStrokePhases, isExpanded]);
+  const { canvasRef, wrapperRef } = useResponsiveCanvas(renderTimeSeries);
 
   if (frames.length === 0 || points.length === 0) {
     return (

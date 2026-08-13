@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, type RefObject } from "react";
+import { useCallback, useMemo } from "react";
 import type { RowingFrame } from "../types/rowing";
 import type { StrokeSegment } from "../types/strokeDetect";
 import { buildOarTrajectory } from "../utils/trajectory";
 import { isIdealAngle } from "../utils/oarAngle";
 import { usePlaybackStore } from "../store/playbackStore";
+import { useResponsiveCanvas, type CanvasBox } from "../hooks/useResponsiveCanvas";
 
 type Props = {
   frames: RowingFrame[];
@@ -44,16 +45,6 @@ const HIGHLIGHT_STROKE_WIDTH = 4;
 
 const formatAngle = (angle: number): string => {
   return `${angle.toFixed(1)}°`;
-};
-
-type CanvasBox = {
-  width: number;
-  height: number;
-};
-
-type CanvasSize = {
-  w: number;
-  h: number;
 };
 
 const drawText = (
@@ -117,43 +108,6 @@ const drawRotatedSymbol = (
   ctx.lineTo(halfLength, 0);
   ctx.stroke();
   ctx.restore();
-};
-
-const resizeCanvas = (canvas: HTMLCanvasElement, box: CanvasBox, canvasSize: RefObject<CanvasSize>) => {
-  const nextWidth = Math.max(1, Math.round(box.width));
-  const nextHeight = Math.max(1, Math.round(box.height));
-  if (canvasSize.current.w === nextWidth && canvasSize.current.h === nextHeight) {
-    return false;
-  }
-
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = Math.max(1, Math.round(nextWidth * dpr));
-  canvas.height = Math.max(1, Math.round(nextHeight * dpr));
-  canvas.style.width = `${nextWidth}px`;
-  canvas.style.height = `${nextHeight}px`;
-  canvasSize.current = { w: nextWidth, h: nextHeight };
-  return true;
-};
-
-const measureCanvasBox = (wrapper: HTMLDivElement): CanvasBox | null => {
-  const rect = wrapper.getBoundingClientRect();
-  if (rect.width <= 0 || rect.height <= 0) {
-    return null;
-  }
-
-  return {
-    width: Math.round(rect.width),
-    height: Math.round(rect.height),
-  };
-};
-
-const resolveCanvasBox = (wrapper: HTMLDivElement, canvasSize: RefObject<CanvasSize>): CanvasBox | null => {
-  const { w, h } = canvasSize.current;
-  if (w > 0 && h > 0) {
-    return { width: w, height: h };
-  }
-
-  return measureCanvasBox(wrapper);
 };
 
 const drawCanvas = (
@@ -337,10 +291,6 @@ const drawCanvas = (
 
 export default function OarTrajectoryChart({ frames, currentIndex, strokes }: Props) {
   const { oarSide } = usePlaybackStore();
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const canvasSizeRef = useRef<CanvasSize>({ w: 0, h: 0 });
-  const animationFrameRef = useRef<number | null>(null);
   const points = useMemo(() => buildOarTrajectory(frames), [frames]);
   const hasTrajectory = frames.length > 0 && points.length > 0;
 
@@ -374,96 +324,10 @@ export default function OarTrajectoryChart({ frames, currentIndex, strokes }: Pr
     return set;
   }, [strokes]);
 
-  const latestRenderStateRef = useRef({
-    activeData,
-    safeIndex,
-    currentAngle,
-    oarSide,
-    driveFrameSet,
-  });
-  latestRenderStateRef.current = {
-    activeData,
-    safeIndex,
-    currentAngle,
-    oarSide,
-    driveFrameSet,
-  };
-
-  const cancelScheduledDraw = () => {
-    if (animationFrameRef.current !== null) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-  };
-
-  const scheduleDraw = (draw: () => void) => {
-    cancelScheduledDraw();
-    animationFrameRef.current = requestAnimationFrame(() => {
-      animationFrameRef.current = null;
-      draw();
-    });
-  };
-
-  const drawLatest = () => {
-    const canvas = canvasRef.current;
-    const wrapper = wrapperRef.current;
-    if (!canvas || !wrapper) {
-      return;
-    }
-
-    const box = resolveCanvasBox(wrapper, canvasSizeRef);
-    if (!box) {
-      scheduleDraw(drawLatest);
-      return;
-    }
-
-    const { activeData: latestActiveData, safeIndex: latestSafeIndex, currentAngle: latestCurrentAngle, oarSide: latestOarSide, driveFrameSet: latestDriveFrameSet } = latestRenderStateRef.current;
-    resizeCanvas(canvas, box, canvasSizeRef);
-    drawCanvas(canvas, box, latestActiveData, latestSafeIndex, latestCurrentAngle, latestOarSide, latestDriveFrameSet);
-  };
-
-  useEffect(() => {
-    if (!canvasRef.current || !wrapperRef.current) {
-      return;
-    }
-
-    drawLatest();
-
-    if (typeof ResizeObserver === "undefined") {
-      return () => {
-        cancelScheduledDraw();
-      };
-    }
-
-    const observer = new ResizeObserver(() => {
-      // キャッシュを破棄して必ず再計測させる
-      canvasSizeRef.current = { w: 0, h: 0 };
-      drawLatest();
-    });
-    observer.observe(wrapperRef.current);
-
-    return () => {
-      observer.disconnect();
-      cancelScheduledDraw();
-    };
-  }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const wrapper = wrapperRef.current;
-    if (!canvas || !wrapper) {
-      return;
-    }
-
-    const box = resolveCanvasBox(wrapper, canvasSizeRef);
-    if (!box) {
-      scheduleDraw(drawLatest);
-      return;
-    }
-
-    resizeCanvas(canvas, box, canvasSizeRef);
+  const renderTrajectory = useCallback((canvas: HTMLCanvasElement, box: CanvasBox) => {
     drawCanvas(canvas, box, activeData, safeIndex, currentAngle, oarSide, driveFrameSet);
   }, [activeData, currentAngle, safeIndex, oarSide, driveFrameSet]);
+  const { canvasRef, wrapperRef } = useResponsiveCanvas(renderTrajectory);
 
   if (!hasTrajectory) {
     return (
