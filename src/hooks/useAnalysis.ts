@@ -9,6 +9,12 @@ import type { VelocityResult } from '../domain/analyzers';
 import type { DatasetState } from './useDataset';
 
 const EMPTY_STROKES: StrokeSegment[] = [];
+const EMPTY_MANIFEST_FRAMES: Array<{ id: string; label: string; frames: RowingFrame[] }> = [];
+
+interface ManifestFramesState {
+  manifestKey: string;
+  datasets: Array<{ id: string; label: string; frames: RowingFrame[] }>;
+}
 
 export interface UseAnalysisResult {
   frames: RowingFrame[];
@@ -47,19 +53,16 @@ export function useAnalysis(datasetState: DatasetState): UseAnalysisResult {
   const strokes = analysis?.strokes ?? EMPTY_STROKES;
 
   // 横断分析用にマニフェストの全フレームを非同期ロード
-  const [allManifestFrames, setAllManifestFrames] = useState<
-    Array<{ id: string; label: string; frames: RowingFrame[] }>
-  >([]);
+  const [manifestFramesState, setManifestFramesState] = useState<ManifestFramesState | null>(null);
+  const manifestKey = useMemo(
+    () => datasetState.manifest.map(({ id, path }) => `${id}:${path}`).join('|'),
+    [datasetState.manifest],
+  );
+  const hasCustomDatasets = Object.keys(customDatasets).length > 0;
 
   useEffect(() => {
     const manifest = datasetState.manifest;
-    if (manifest.length === 0) return;
-
-    // カスタムデータセット使用中はマニフェスト非同期ロードをスキップ
-    if (Object.keys(customDatasets).length > 0) {
-      setAllManifestFrames([]);
-      return;
-    }
+    if (manifest.length === 0 || hasCustomDatasets) return;
 
     let cancelled = false;
 
@@ -67,7 +70,7 @@ export function useAnalysis(datasetState: DatasetState): UseAnalysisResult {
       try {
         const results = await loadAllManifestDatasets(manifest);
         if (!cancelled) {
-          setAllManifestFrames(results);
+          setManifestFramesState({ manifestKey, datasets: results });
         }
       } catch {
         // 読み込み失敗は無視
@@ -78,7 +81,11 @@ export function useAnalysis(datasetState: DatasetState): UseAnalysisResult {
     return () => {
       cancelled = true;
     };
-  }, [datasetState.manifest, customDatasets]);
+  }, [datasetState.manifest, hasCustomDatasets, manifestKey]);
+
+  const allManifestFrames = !hasCustomDatasets && manifestFramesState?.manifestKey === manifestKey
+    ? manifestFramesState.datasets
+    : EMPTY_MANIFEST_FRAMES;
 
   // 全データセット横断データを集計
   const allDatasetsData = useMemo<DatasetStrokeData[] | undefined>(() => {

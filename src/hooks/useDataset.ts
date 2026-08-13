@@ -10,33 +10,37 @@ export interface DatasetState {
   error: string | null;
 }
 
+type ManifestLoadState =
+  | { status: 'loading'; manifest: DatasetManifestItem[]; error: null }
+  | { status: 'ready'; manifest: DatasetManifestItem[]; error: null }
+  | { status: 'error'; manifest: DatasetManifestItem[]; error: string };
+
+interface RemoteDatasetLoadState {
+  datasetId: string;
+  dataset: DatasetCsv | null;
+  error: string | null;
+}
+
 export function useDataset(selectedDatasetId: string): DatasetState {
   const { customDatasets } = usePlaybackStore();
-  const [manifest, setManifest] = useState<DatasetManifestItem[]>([]);
-  const [dataset, setDataset] = useState<DatasetCsv | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [manifestState, setManifestState] = useState<ManifestLoadState>({
+    status: 'loading',
+    manifest: [],
+    error: null,
+  });
+  const [remoteDatasetState, setRemoteDatasetState] = useState<RemoteDatasetLoadState | null>(null);
 
   // マニフェストリストの初回読み込み
   useEffect(() => {
     let cancelled = false;
 
     async function run(): Promise<void> {
-      setLoading(true);
-      setError(null);
       try {
-        const datasets = await fetchManifest();
-        if (cancelled) {
-          return;
-        }
-        setManifest(datasets);
+        const manifest = await fetchManifest();
+        if (!cancelled) setManifestState({ status: 'ready', manifest, error: null });
       } catch (err) {
-        if (cancelled) {
-          return;
-        }
         const message = err instanceof Error ? err.message : 'manifest load failed';
-        setError(message);
-        setLoading(false);
+        if (!cancelled) setManifestState({ status: 'error', manifest: [], error: message });
       }
     }
 
@@ -46,43 +50,30 @@ export function useDataset(selectedDatasetId: string): DatasetState {
     };
   }, []);
 
-  // 選択されたデータセットの読み込み（カスタムまたはマニフェスト）
-  useEffect(() => {
-    // カスタムデータセットが選択されている場合は、メモリから即座に取得して終了
-    if (selectedDatasetId in customDatasets) {
-      setDataset(customDatasets[selectedDatasetId]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
+  const customDataset = customDatasets[selectedDatasetId] ?? null;
+  const remoteTarget = manifestState.manifest.find((item) => item.id === selectedDatasetId)
+    ?? manifestState.manifest[0]
+    ?? null;
 
-    if (manifest.length === 0) {
-      setLoading(false);
-      return;
-    }
+  // 選択されたマニフェストデータセットの読み込み。カスタム選択中はメモリ値を直接返す。
+  useEffect(() => {
+    if (customDataset || !remoteTarget) return;
 
     let cancelled = false;
     async function run(): Promise<void> {
-      setLoading(true);
-      setError(null);
       try {
-        const target = manifest.find((item) => item.id === selectedDatasetId) ?? manifest[0];
-        if (!target) {
-          throw new Error('dataset not found');
+        const dataset = await fetchDatasetCsv(remoteTarget);
+        if (!cancelled) {
+          setRemoteDatasetState({ datasetId: remoteTarget.id, dataset, error: null });
         }
-        const data = await fetchDatasetCsv(target);
-        if (cancelled) {
-          return;
-        }
-        setDataset(data);
-        setLoading(false);
       } catch (err) {
-        if (cancelled) {
-          return;
+        if (!cancelled) {
+          setRemoteDatasetState({
+            datasetId: remoteTarget.id,
+            dataset: null,
+            error: err instanceof Error ? err.message : 'dataset load failed',
+          });
         }
-        const message = err instanceof Error ? err.message : 'dataset load failed';
-        setError(message);
-        setLoading(false);
       }
     }
 
@@ -90,7 +81,31 @@ export function useDataset(selectedDatasetId: string): DatasetState {
     return () => {
       cancelled = true;
     };
-  }, [manifest, selectedDatasetId, customDatasets]);
+  }, [customDataset, remoteTarget]);
 
-  return { manifest, dataset, loading, error };
+  if (customDataset) {
+    return {
+      manifest: manifestState.manifest,
+      dataset: customDataset,
+      loading: false,
+      error: null,
+    };
+  }
+
+  if (manifestState.status !== 'ready' || !remoteTarget) {
+    return {
+      manifest: manifestState.manifest,
+      dataset: null,
+      loading: manifestState.status === 'loading',
+      error: manifestState.error,
+    };
+  }
+
+  const remoteReady = remoteDatasetState?.datasetId === remoteTarget.id;
+  return {
+    manifest: manifestState.manifest,
+    dataset: remoteReady ? remoteDatasetState.dataset : null,
+    loading: !remoteReady,
+    error: remoteReady ? remoteDatasetState.error : null,
+  };
 }
