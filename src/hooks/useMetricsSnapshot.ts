@@ -1,39 +1,33 @@
 import { useCallback, useState } from 'react';
-import type { DatasetStrokeData } from '../types/analysis';
-import type { RowingFrame } from '../types/rowing';
-import type { StrokeSegment } from '../types/strokeDetect';
+import type { StrokeMetricRow } from '../types/analysis';
 
 interface MetricsSnapshot {
   collectionKey: string;
-  frames: RowingFrame[];
-  strokes: StrokeSegment[];
-  allDatasetsData: DatasetStrokeData[] | undefined;
+  strokeMetrics: StrokeMetricRow[];
+  allStrokeMetrics: StrokeMetricRow[] | undefined;
 }
 
 interface MetricsSnapshotInput {
   collectionKey: string;
-  frames: RowingFrame[];
-  strokes: StrokeSegment[];
-  allDatasetsData: DatasetStrokeData[] | undefined;
+  strokeMetrics: StrokeMetricRow[];
+  allStrokeMetrics: StrokeMetricRow[] | undefined;
 }
 
 export function useMetricsSnapshot({
   collectionKey,
-  frames,
-  strokes,
-  allDatasetsData,
+  strokeMetrics,
+  allStrokeMetrics,
 }: MetricsSnapshotInput) {
   const [snapshot, setSnapshot] = useState<MetricsSnapshot | null>(null);
 
   const captureSnapshot = useCallback(() => {
-    setSnapshot({ collectionKey, frames, strokes, allDatasetsData });
-  }, [allDatasetsData, collectionKey, frames, strokes]);
+    setSnapshot({ collectionKey, strokeMetrics, allStrokeMetrics });
+  }, [allStrokeMetrics, collectionKey, strokeMetrics]);
 
   const activeSnapshot = snapshot?.collectionKey === collectionKey ? snapshot : null;
   return {
     captureSnapshot,
-    snapshotFrames: activeSnapshot?.frames ?? frames,
-    snapshotStrokes: activeSnapshot?.strokes ?? strokes,
-    snapshotAllDatasetsData: activeSnapshot?.allDatasetsData ?? allDatasetsData,
+    snapshotStrokeMetrics: activeSnapshot?.strokeMetrics ?? strokeMetrics,
+    snapshotAllStrokeMetrics: activeSnapshot?.allStrokeMetrics ?? allStrokeMetrics,
   };
 }

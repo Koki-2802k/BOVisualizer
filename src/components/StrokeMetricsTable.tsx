@@ -1,9 +1,5 @@
 import { useMemo, useState, memo } from 'react';
-import type { RowingFrame } from '../types/rowing';
-import type { StrokeSegment } from '../types/strokeDetect';
-import type { DatasetStrokeData } from '../types/analysis';
-import { buildOarTrajectory, type TrajectoryPoint } from '../utils/trajectory';
-import { isIdealAngle } from '../utils/oarAngle';
+import type { StrokeMetricRow } from '../types/analysis';
 import { usePlaybackStore } from '../store/playbackStore';
 
 // スパークラインコンポーネント（ホバー時のストローク番号ツールチップ表示機能付き）
@@ -148,174 +144,26 @@ const Sparkline = memo(function Sparkline({ values, strokeColor, width = 180, he
 });
 
 
-/** 全データセット横断表示用の1データセット分のデータ */
-export type { DatasetStrokeData } from '../types/analysis';
-
 type Props = {
-  frames: RowingFrame[];
-  strokes: StrokeSegment[];
+  strokeMetrics: StrokeMetricRow[];
   currentIndex?: number;
-  /** 全データセット横断表示用データ（指定時は全データセット分を表示） */
-  allDatasetsData?: DatasetStrokeData[];
+  /** 全データセット横断表示用のキャッシュ済みメトリクス */
+  allStrokeMetrics?: StrokeMetricRow[];
   isExpanded?: boolean;
 };
 
-type StrokeMetricRow = {
-  strokeIndex: number;
-  startFrame: number;
-  endFrame: number;
-  leftCatch: number;
-  leftFinish: number;
-  rightCatch: number;
-  rightFinish: number;
-  /**
-   * キャッチ角度差 = leftCatch + rightCatch
-   * 右オールセンサーは物理的に左と反転しているため、
-   * 対称ストロークでは rightAngle ≈ -leftAngle となる。
-   * この和が 0 ≈ 対称、正 = 左キャッチが艇前方寄り、負 = 右が前方寄り。
-   */
-  catchAngleDiff: number;
-  /**
-   * フィニッシュ角度差 = leftFinish + rightFinish
-   * 対称なら ≈ 0。正 = 右フィニッシュが艇後方寄り、負 = 左が後方寄り。
-   */
-  finishAngleDiff: number;
-  /** ドライブ期間中に左オールが良い角度だったフレームの割合 [0–100%] */
-  leftIdealRatio: number;
-  /** ドライブ期間中に右オールが良い角度だったフレームの割合 [0–100%] */
-  rightIdealRatio: number;
-  datasetId?: string;
-  datasetLabel?: string;
-};
-
-/** ストロークメトリクス計算の共通ロジック */
-function computeStrokeRow(
-  trajectory: TrajectoryPoint[],
-  stroke: StrokeSegment,
-  globalIndex: number,
-  datasetId?: string,
-  datasetLabel?: string,
-): StrokeMetricRow {
-  const start = stroke.startFrame;
-  const end = stroke.endFrame;
-
-  const strokeTrajectory = trajectory.slice(start, end + 1);
-  const leftAngles = strokeTrajectory.map((t) => t.leftAngleDeg);
-  const rightAngles = strokeTrajectory.map((t) => t.rightAngleDeg);
-
-  const minLeft = leftAngles.length > 0 ? Math.min(...leftAngles) : 0;
-  const maxLeft = leftAngles.length > 0 ? Math.max(...leftAngles) : 0;
-  const minRight = rightAngles.length > 0 ? Math.min(...rightAngles) : 0;
-  const maxRight = rightAngles.length > 0 ? Math.max(...rightAngles) : 0;
-
-  const catchSeg = stroke.phases.find((p) => p.phase === 'catch');
-  const finishSeg = stroke.phases.find((p) => p.phase === 'finish');
-
-  let leftCatch = maxLeft;
-  let leftFinish = minLeft;
-  let rightCatch = maxRight;
-  let rightFinish = minRight;
-
-  if (catchSeg && finishSeg) {
-    const cStartIdx = Math.max(0, catchSeg.startFrame - start);
-    const cEndIdx = Math.min(strokeTrajectory.length - 1, catchSeg.endFrame - start);
-    const leftCatchAvg =
-      leftAngles.slice(cStartIdx, cEndIdx + 1).reduce((a, b) => a + b, 0) /
-      (cEndIdx - cStartIdx + 1 || 1);
-    const rightCatchAvg =
-      rightAngles.slice(cStartIdx, cEndIdx + 1).reduce((a, b) => a + b, 0) /
-      (cEndIdx - cStartIdx + 1 || 1);
-
-    const fStartIdx = Math.max(0, finishSeg.startFrame - start);
-    const fEndIdx = Math.min(strokeTrajectory.length - 1, finishSeg.endFrame - start);
-    const leftFinishAvg =
-      leftAngles.slice(fStartIdx, fEndIdx + 1).reduce((a, b) => a + b, 0) /
-      (fEndIdx - fStartIdx + 1 || 1);
-    const rightFinishAvg =
-      rightAngles.slice(fStartIdx, fEndIdx + 1).reduce((a, b) => a + b, 0) /
-      (fEndIdx - fStartIdx + 1 || 1);
-
-    leftCatch = leftCatchAvg > leftFinishAvg ? maxLeft : minLeft;
-    leftFinish = leftCatchAvg > leftFinishAvg ? minLeft : maxLeft;
-    rightCatch = rightCatchAvg > rightFinishAvg ? maxRight : minRight;
-    rightFinish = rightCatchAvg > rightFinishAvg ? minRight : maxRight;
-  }
-
-  // 右オールセンサーは物理的に左と反転しているため、対称なら rightAngle ≈ -leftAngle。
-  // 差を (left - right) で計算すると対称でも大きな値になる (例: +60° - (-60°) = 120°)。
-  // (left + right) を使うことで対称なら ≈ 0、非対称の度合いが正しく表れる。
-  const catchAngleDiff = leftCatch + rightCatch;
-  const finishAngleDiff = leftFinish + rightFinish;
-
-  // ドライブ区間（catch開始〜finish終了）の良角度比を計算
-  const driveStart = catchSeg ? catchSeg.startFrame : start;
-  const driveEnd   = finishSeg ? finishSeg.endFrame : end;
-  const driveTrajectory = trajectory.slice(driveStart, driveEnd + 1);
-  const totalDriveFrames = driveTrajectory.length || 1;
-  const leftIdealCount  = driveTrajectory.filter((t) => isIdealAngle(t.leftAngleDeg)).length;
-  const rightIdealCount = driveTrajectory.filter((t) => isIdealAngle(t.rightAngleDeg)).length;
-  const leftIdealRatio  = Math.round((leftIdealCount  / totalDriveFrames) * 100);
-  const rightIdealRatio = Math.round((rightIdealCount / totalDriveFrames) * 100);
-
-  return {
-    strokeIndex: globalIndex,
-    startFrame: start,
-    endFrame: end,
-    leftCatch,
-    leftFinish,
-    rightCatch,
-    rightFinish,
-    catchAngleDiff,
-    finishAngleDiff,
-    leftIdealRatio,
-    rightIdealRatio,
-    datasetId,
-    datasetLabel,
-  };
-}
-
 export default function StrokeMetricsTable({
-  frames,
-  strokes,
+  strokeMetrics,
   currentIndex = 0,
-  allDatasetsData,
+  allStrokeMetrics,
   isExpanded = false,
 }: Props) {
   const { setSeekFrame, selectedDatasetId, setSelectedDatasetId } = usePlaybackStore();
   const [pageSelection, setPageSelection] = useState({ page: 1, activeRowIndex: -1 });
   const itemsPerPage = 5;
 
-  const isMultiDataset = !!allDatasetsData && allDatasetsData.length > 0;
-
-
-  const trajectory = useMemo(() => buildOarTrajectory(frames), [frames]);
-
-  // 各ストロークのメトリクス行を計算
-  const rows = useMemo<StrokeMetricRow[]>(() => {
-    if (isMultiDataset && allDatasetsData) {
-      // 全データセット横断モード
-      let globalIdx = 0;
-      const result: StrokeMetricRow[] = [];
-      for (const dsData of allDatasetsData) {
-        if (dsData.strokes.length === 0) continue;
-        const dsTraj = buildOarTrajectory(dsData.frames);
-        if (dsTraj.length === 0) continue;
-        for (const stroke of dsData.strokes) {
-          result.push(
-            computeStrokeRow(dsTraj, stroke, globalIdx, dsData.id, dsData.label),
-          );
-          globalIdx++;
-        }
-      }
-      return result;
-    }
-
-    // 単一データセットモード（既存ロジック）
-    if (trajectory.length === 0 || strokes.length === 0) return [];
-    return strokes.map((stroke) =>
-      computeStrokeRow(trajectory, stroke, stroke.strokeIndex),
-    );
-  }, [trajectory, strokes, isMultiDataset, allDatasetsData]);
+  const isMultiDataset = !!allStrokeMetrics && allStrokeMetrics.length > 0;
+  const rows = isMultiDataset ? allStrokeMetrics : strokeMetrics;
 
   // スパークライン用トレンドデータ
   const trends = useMemo(
@@ -342,10 +190,10 @@ export default function StrokeMetricsTable({
           currentIndex <= row.endFrame,
       );
     }
-    return strokes.findIndex(
-      (s) => currentIndex >= s.startFrame && currentIndex <= s.endFrame,
+    return rows.findIndex(
+      (row) => currentIndex >= row.startFrame && currentIndex <= row.endFrame,
     );
-  }, [rows, strokes, currentIndex, isMultiDataset, selectedDatasetId]);
+  }, [rows, currentIndex, isMultiDataset, selectedDatasetId]);
 
   const activeRow = activeRowIndex !== -1 ? rows[activeRowIndex] : rows[rows.length - 1];
 
@@ -390,7 +238,7 @@ export default function StrokeMetricsTable({
     return label.replace(/^[\p{Emoji}\s]+/u, '').trim();
   };
 
-  if (!isMultiDataset && strokes.length === 0) {
+  if (!isMultiDataset && strokeMetrics.length === 0) {
     return (
       <div className="panel-empty" style={{ flexDirection: 'column', gap: '8px' }}>
         <p style={{ margin: 0, fontSize: '18px' }}>ストロークが検出されていません。</p>

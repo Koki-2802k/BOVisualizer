@@ -1,13 +1,12 @@
 import { useCallback, useMemo } from "react";
-import type { RowingFrame } from "../types/rowing";
 import type { StrokeSegment } from "../types/strokeDetect";
-import { buildOarTrajectory } from "../utils/trajectory";
+import type { TrajectoryPoint } from "../utils/trajectory";
 import { isIdealAngle } from "../utils/oarAngle";
 import { usePlaybackStore } from "../store/playbackStore";
 import { useResponsiveCanvas, type CanvasBox } from "../hooks/useResponsiveCanvas";
 
 type Props = {
-  frames: RowingFrame[];
+  points: TrajectoryPoint[];
   currentIndex: number;
   /** ストローク区間情報。渡された場合、赤色プロットをドライブ区間内に限定する */
   strokes?: StrokeSegment[];
@@ -289,10 +288,9 @@ const drawCanvas = (
   });
 };
 
-export default function OarTrajectoryChart({ frames, currentIndex, strokes }: Props) {
+export default function OarTrajectoryChart({ points, currentIndex, strokes }: Props) {
   const { oarSide } = usePlaybackStore();
-  const points = useMemo(() => buildOarTrajectory(frames), [frames]);
-  const hasTrajectory = frames.length > 0 && points.length > 0;
+  const hasTrajectory = points.length > 0;
 
   const activeData = useMemo(
     () =>

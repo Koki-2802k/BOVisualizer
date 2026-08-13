@@ -63,10 +63,12 @@ function App() {
 
   const {
     frames,
+    trajectory,
     strokes,
+    strokeMetrics,
     metrics,
     velocity,
-    allDatasetsData,
+    allStrokeMetrics,
     hasAnyStrokes,
     loading,
     error,
@@ -106,14 +108,12 @@ function App() {
   );
   const {
     captureSnapshot: handleReload,
-    snapshotFrames,
-    snapshotStrokes,
-    snapshotAllDatasetsData,
+    snapshotStrokeMetrics,
+    snapshotAllStrokeMetrics,
   } = useMetricsSnapshot({
     collectionKey: datasetCollectionKey,
-    frames,
-    strokes,
-    allDatasetsData,
+    strokeMetrics,
+    allStrokeMetrics,
   });
 
   const metricsTabAvailable = analysisMode && showStrokeMetrics && hasAnyStrokes;
@@ -265,7 +265,7 @@ function App() {
                 <Suspense fallback={<div className="overlay-message loading">オール軌跡を読み込み中...</div>}>
                   <OarTrajectoryChart
                     key={`oar-${expandedPanel ?? 'none'}`}
-                    frames={frames}
+                    points={trajectory}
                     currentIndex={uiFrame}
                     strokes={strokes}
                   />
@@ -343,10 +343,9 @@ function App() {
                     />
                   ) : (
                     <StrokeMetricsTable
-                      frames={snapshotFrames}
-                      strokes={snapshotStrokes}
+                      strokeMetrics={snapshotStrokeMetrics}
                       currentIndex={uiFrame}
-                      allDatasetsData={snapshotAllDatasetsData}
+                      allStrokeMetrics={snapshotAllStrokeMetrics}
                       isExpanded={expandedPanel === 'timeseries'}
                     />
                   )}
