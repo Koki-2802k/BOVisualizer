@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, memo } from 'react';
+import { useMemo, useState, memo } from 'react';
 import type { RowingFrame } from '../types/rowing';
 import type { StrokeSegment } from '../types/strokeDetect';
 import type { DatasetStrokeData } from '../types/analysis';
@@ -282,7 +282,7 @@ export default function StrokeMetricsTable({
   isExpanded = false,
 }: Props) {
   const { setSeekFrame, selectedDatasetId, setSelectedDatasetId } = usePlaybackStore();
-  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSelection, setPageSelection] = useState({ page: 1, activeRowIndex: -1 });
   const itemsPerPage = 5;
 
   const isMultiDataset = !!allDatasetsData && allDatasetsData.length > 0;
@@ -349,19 +349,14 @@ export default function StrokeMetricsTable({
 
   const activeRow = activeRowIndex !== -1 ? rows[activeRowIndex] : rows[rows.length - 1];
 
-  // ストローク構成や再生位置（アクティブ行）が変わったときに、アクティブ行があるページに追従（無ければページ1）
-  useEffect(() => {
-    if (activeRowIndex !== -1) {
-      const activePage = Math.floor(activeRowIndex / itemsPerPage) + 1;
-      setCurrentPage(activePage);
-    } else {
-      setCurrentPage(1);
-    }
-  }, [strokes, allDatasetsData, activeRowIndex, itemsPerPage]);
-
-
-
   const totalPages = Math.ceil(rows.length / itemsPerPage) || 1;
+  const followedPage = activeRowIndex === -1
+    ? 1
+    : Math.floor(activeRowIndex / itemsPerPage) + 1;
+  const currentPage = Math.min(
+    totalPages,
+    pageSelection.activeRowIndex === activeRowIndex ? pageSelection.page : followedPage,
+  );
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedRows = rows.slice(startIndex, startIndex + itemsPerPage);
 
@@ -370,8 +365,14 @@ export default function StrokeMetricsTable({
     displayRows.push(null);
   }
 
-  const handlePrevPage = () => setCurrentPage((prev) => Math.max(1, prev - 1));
-  const handleNextPage = () => setCurrentPage((prev) => Math.min(totalPages, prev + 1));
+  const handlePrevPage = () => setPageSelection({
+    page: Math.max(1, currentPage - 1),
+    activeRowIndex,
+  });
+  const handleNextPage = () => setPageSelection({
+    page: Math.min(totalPages, currentPage + 1),
+    activeRowIndex,
+  });
 
   const handleRowClick = (row: StrokeMetricRow) => {
     if (isMultiDataset && row.datasetId) {
