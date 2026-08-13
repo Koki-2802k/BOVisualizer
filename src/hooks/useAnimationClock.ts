@@ -7,6 +7,12 @@ type AnimationClockParams = {
   seekFrame: number;
 };
 
+interface ClockFrameState {
+  frameIndex: number;
+  frameCount: number;
+  seekFrame: number;
+}
+
 export function clampFrameIndex(frameCount: number, frameIndex: number): number {
   if (!Number.isFinite(frameIndex) || frameCount <= 0) {
     return 0;
@@ -15,24 +21,37 @@ export function clampFrameIndex(frameCount: number, frameIndex: number): number 
   return Math.max(0, Math.min(frameIndex, frameCount - 1));
 }
 
+export function advanceFrameIndex(
+  frameCount: number,
+  frameIndex: number,
+  elapsedFrames: number,
+): number {
+  if (frameCount <= 0) return 0;
+  const safeFrame = clampFrameIndex(frameCount, frameIndex);
+  const safeElapsed = Math.max(0, Math.floor(elapsedFrames));
+  return (safeFrame + safeElapsed) % frameCount;
+}
+
 export function useAnimationClock({ frameCount, fps, isPlaying, seekFrame }: AnimationClockParams) {
   const frameRef = useRef<number>(0);
-  const [uiFrame, setUiFrame] = useState<number>(0);
+  const [clockFrame, setClockFrame] = useState<ClockFrameState>(() => ({
+    frameIndex: clampFrameIndex(frameCount, seekFrame),
+    frameCount,
+    seekFrame,
+  }));
+
+  const safeSeekFrame = clampFrameIndex(frameCount, seekFrame);
+  const uiFrame = clockFrame.frameCount === frameCount && clockFrame.seekFrame === seekFrame
+    ? clampFrameIndex(frameCount, clockFrame.frameIndex)
+    : safeSeekFrame;
 
   useEffect(() => {
-    const safeFrame = clampFrameIndex(frameCount, seekFrame);
-    frameRef.current = safeFrame;
-    setUiFrame(safeFrame);
-  }, [seekFrame, frameCount]);
+    frameRef.current = safeSeekFrame;
+  }, [safeSeekFrame]);
 
   useEffect(() => {
     if (!isPlaying || frameCount <= 1) {
       return;
-    }
-
-    if (frameRef.current >= frameCount) {
-      frameRef.current = clampFrameIndex(frameCount, frameRef.current);
-      setUiFrame(frameRef.current);
     }
 
     const frameDuration = 1000 / Math.max(fps, 1);
@@ -44,12 +63,12 @@ export function useAnimationClock({ frameCount, fps, isPlaying, seekFrame }: Ani
       accumulator += now - lastTime;
       lastTime = now;
 
-      while (accumulator >= frameDuration) {
-        frameRef.current = (frameRef.current + 1) % frameCount;
-        accumulator -= frameDuration;
+      const elapsedFrames = Math.floor(accumulator / frameDuration);
+      if (elapsedFrames > 0) {
+        frameRef.current = advanceFrameIndex(frameCount, frameRef.current, elapsedFrames);
+        accumulator -= elapsedFrames * frameDuration;
+        setClockFrame({ frameIndex: frameRef.current, frameCount, seekFrame });
       }
-
-      setUiFrame(frameRef.current);
       rafId = window.requestAnimationFrame(tick);
     };
 
@@ -57,7 +76,7 @@ export function useAnimationClock({ frameCount, fps, isPlaying, seekFrame }: Ani
     return () => {
       window.cancelAnimationFrame(rafId);
     };
-  }, [isPlaying, fps, frameCount]);
+  }, [isPlaying, fps, frameCount, seekFrame]);
 
-  return { frameRef, uiFrame, setUiFrame };
+  return { uiFrame };
 }
