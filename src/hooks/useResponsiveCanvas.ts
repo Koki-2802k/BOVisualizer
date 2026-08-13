@@ -7,6 +7,8 @@ export interface CanvasBox {
 
 type CanvasDraw = (canvas: HTMLCanvasElement, box: CanvasBox) => void;
 
+const MAX_MEASURE_RETRIES = 30;
+
 const measureCanvas = (wrapper: HTMLDivElement): CanvasBox | null => {
   const { width, height } = wrapper.getBoundingClientRect();
   if (width <= 0 || height <= 0) return null;
@@ -29,6 +31,7 @@ export function useResponsiveCanvas(draw: CanvasDraw) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const drawRef = useRef<CanvasDraw>(draw);
   const animationFrameRef = useRef<number | null>(null);
+  const measureRetryRef = useRef(0);
 
   const cancelScheduledDraw = useCallback(() => {
     if (animationFrameRef.current === null) return;
@@ -43,7 +46,14 @@ export function useResponsiveCanvas(draw: CanvasDraw) {
     if (!canvas || !wrapper) return;
 
     const box = measureCanvas(wrapper);
-    if (!box) return;
+    if (!box) {
+      if (measureRetryRef.current < MAX_MEASURE_RETRIES) {
+        measureRetryRef.current += 1;
+        animationFrameRef.current = window.requestAnimationFrame(drawCanvas);
+      }
+      return;
+    }
+    measureRetryRef.current = 0;
     resizeCanvas(canvas, box);
     drawRef.current(canvas, box);
   }, []);
@@ -55,6 +65,7 @@ export function useResponsiveCanvas(draw: CanvasDraw) {
 
   useEffect(() => {
     drawRef.current = draw;
+    measureRetryRef.current = 0;
     scheduleDraw();
   }, [draw, scheduleDraw]);
 

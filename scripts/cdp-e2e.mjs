@@ -211,7 +211,7 @@ async function capturePageState(send) {
         dpr: window.devicePixelRatio || 1,
         canvasSummaries,
         oarCanvas: sampleCanvas('section[aria-label="オール軌跡"]'),
-        timeSeriesCanvas: sampleCanvas('section[aria-label="時系列グラフ"]'),
+        timeSeriesCanvas: sampleCanvas('section[aria-label^="時系列グラフ"]'),
       };
     })()`,
   );
@@ -245,7 +245,10 @@ function collectErrors(events) {
 function verifyCanvas(state, width, height, label) {
   const canvas = state[label];
   if (!canvas?.found) {
-    throw new Error(`${label} canvas not found`);
+    throw new Error(
+      `${label} canvas not found; canvasSummaries=${JSON.stringify(state.canvasSummaries)}; ` +
+      `body=${JSON.stringify(state.bodyText.slice(0, 800))}`,
+    );
   }
   if (!canvas.readable) {
     throw new Error(`${label} canvas was not readable`);
