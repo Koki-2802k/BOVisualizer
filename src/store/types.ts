@@ -1,4 +1,4 @@
-import type { DatasetCsv, DatasetManifestItem } from '../types/rowing';
+import type { DatasetCsv, DatasetManifestItem, LocalDatasetItem } from '../types/rowing';
 import type { GraphMode, OarSide, SpeedSource } from '../types/view';
 
 export interface PlaybackSlice {
@@ -12,11 +12,7 @@ export interface PlaybackSlice {
   setMaxFrame: (maxFrame: number) => void;
 }
 
-export interface CustomDatasetInput {
-  id: string;
-  label: string;
-  data: DatasetCsv;
-}
+export type CustomDatasetInput = LocalDatasetItem;
 
 export interface DatasetSlice {
   datasets: DatasetManifestItem[];

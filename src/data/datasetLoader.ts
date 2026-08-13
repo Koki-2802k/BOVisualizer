@@ -1,4 +1,4 @@
-import { parseRowingCsv } from '../utils/csvParser';
+import { parseRowingCsv } from './csvParser';
 import type { DatasetCsv, DatasetManifest, DatasetManifestItem, RowingFrame } from '../types/rowing';
 
 /**

@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import type { DatasetCsv, DatasetManifestItem, RowingFrame } from '../types/rowing';
 import type { GraphMode, SpeedSource } from '../types/view';
-import { parseRowingCsv } from '../utils/csvParser';
+import { parseRowingCsv } from '../data/csvParser';
 
 const toNumber = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {

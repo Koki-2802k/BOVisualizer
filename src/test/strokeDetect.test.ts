@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { describe, expect, it } from 'vitest';
-import { parseRowingCsv } from '../utils/csvParser';
+import { parseRowingCsv } from '../data/csvParser';
 import { detectStrokes } from '../utils/strokeDetect';
 
 describe('detectStrokes with sample_1.csv', () => {

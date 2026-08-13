@@ -24,6 +24,12 @@ export interface DatasetManifest {
   datasets: DatasetManifestItem[];
 }
 
+export interface LocalDatasetItem {
+  id: string;
+  label: string;
+  data: DatasetCsv;
+}
+
 export interface TimePoint {
   frameNumber: number;
   elapsedSeconds: number;
