@@ -6,15 +6,14 @@
  * 他スライスへの依存なし。
  */
 import type { StateCreator } from 'zustand';
-import type { GraphMode } from '../../components/TimeSeriesChart';
+import type { GraphMode, OarSide, SpeedSource } from '../../types/view';
 
-/** 速度グラフのデータソース: 実測(GPS 1Hz) / 積分(加速度積分) */
-export type SpeedSource = 'measured' | 'integrated';
+export type { SpeedSource } from '../../types/view';
 
 export type ViewSlice = {
-  oarSide: 'right' | 'left';
+  oarSide: OarSide;
   graphMode: GraphMode;
-  initialOarSide: 'right' | 'left';
+  initialOarSide: OarSide;
   initialGraphMode: GraphMode;
   playOnSwitch: boolean;
   analysisMode: boolean;
@@ -22,9 +21,9 @@ export type ViewSlice = {
   showStrokeMetrics: boolean;
   /** 速度グラフのソース（既定: 積分値） */
   speedSource: SpeedSource;
-  setOarSide: (side: 'right' | 'left') => void;
+  setOarSide: (side: OarSide) => void;
   setGraphMode: (graphMode: GraphMode) => void;
-  setInitialOarSide: (side: 'right' | 'left') => void;
+  setInitialOarSide: (side: OarSide) => void;
   setInitialGraphMode: (mode: GraphMode) => void;
   setPlayOnSwitch: (play: boolean) => void;
   setAnalysisMode: (enabled: boolean) => void;

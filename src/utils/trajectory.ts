@@ -1,7 +1,6 @@
 import { computeOarTipXY, extractZXYEulerYDeg, makeSensorQuaternion } from "./coordTransform";
 import type { RowingFrame } from "../types/rowing";
-import type { NormalizedFrame } from "../domain/schema";
-import { getAnalysis } from "../domain/analysisRepository";
+import { normalizeFrames, type NormalizedFrame } from "../domain/schema";
 
 export type TrajectoryPoint = {
   frameNumber: number;
@@ -23,7 +22,7 @@ const fallbackFromAngle = (angleDeg: number, side: "left" | "right"): { x: numbe
 
 /** 公開ラッパー — 外部コンポーネントは RowingFrame[] を渡す。 */
 export const buildOarTrajectory = (frames: RowingFrame[]): TrajectoryPoint[] => {
-  return getAnalysis(frames).trajectory;
+  return buildOarTrajectoryInternal(normalizeFrames(frames));
 };
 
 /**

@@ -5,9 +5,7 @@ import type {
   MetricSeriesPoint,
   TimePoint,
 } from '../types/rowing';
-import type { NormalizedFrame, MetricKey } from '../domain/schema';
-import { METRIC_COLUMNS } from '../domain/schema';
-import { getAnalysis } from '../domain/analysisRepository';
+import { METRIC_COLUMNS, normalizeFrames, type NormalizedFrame, type MetricKey } from '../domain/schema';
 
 // ───────────────────────────────────────────────────────────────────────────
 // 内部ビルダー（NormalizedFrame を使用）
@@ -75,7 +73,7 @@ const buildGpsValidPoints = (frames: NormalizedFrame[]): GpsPoint[] =>
 
 /** 公開ラッパー — 外部コンポーネントは DatasetCsv を渡す。 */
 export const deriveMetrics = (dataset: DatasetCsv): DerivedMetrics => {
-  return getAnalysis(dataset.frames).metrics;
+  return deriveMetricsInternal(normalizeFrames(dataset.frames));
 };
 
 /**

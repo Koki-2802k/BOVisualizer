@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import type { RowingFrame } from "../types/rowing";
 import type { StrokeSegment } from "../types/strokeDetect";
+import type { GraphMode, SpeedSource } from "../types/view";
 
-export type GraphMode = "acceleration" | "gyro" | "speed";
-
-export type SpeedSource = "measured" | "integrated";
+export type { GraphMode, SpeedSource } from "../types/view";
 
 type Props = {
   frames: RowingFrame[];

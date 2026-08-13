@@ -3,12 +3,12 @@ import type { DatasetCsv, DatasetManifestItem } from '../types/rowing';
 import { usePlaybackStore } from '../store/playbackStore';
 import { fetchManifest, fetchDatasetCsv } from '../data/datasetLoader';
 
-type DatasetState = {
+export interface DatasetState {
   manifest: DatasetManifestItem[];
   dataset: DatasetCsv | null;
   loading: boolean;
   error: string | null;
-};
+}
 
 export function useDataset(selectedDatasetId: string): DatasetState {
   const { customDatasets } = usePlaybackStore();

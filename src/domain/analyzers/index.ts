@@ -12,6 +12,7 @@ export type { Analyzer, AnalysisInput } from './types';
 export { strokeAnalyzer } from './strokeAnalyzer';
 export { metricsAnalyzer } from './metricsAnalyzer';
 export { velocityAnalyzer } from './velocityAnalyzer';
+export type { VelocityResult } from './velocityAnalyzer';
 
 import type { Analyzer } from './types';
 import { velocityAnalyzer } from './velocityAnalyzer';
@@ -28,8 +29,7 @@ import { velocityAnalyzer } from './velocityAnalyzer';
  * export const ANALYZERS: Analyzer<unknown>[] = [forceCurveAnalyzer];
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const ANALYZERS: Analyzer<any>[] = [
+export const ANALYZERS: Analyzer<unknown>[] = [
   velocityAnalyzer, // 加速度積分による速度推定 → extra.get('velocity')
   // ← 新しいアナライザーをここに追加
 ];

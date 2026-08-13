@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePlaybackStore } from '../store/playbackStore';
-import { detectStrokes } from '../utils/strokeDetect';
-import { deriveMetrics } from '../utils/metrics';
 import { getAnalysis } from '../domain/analysisRepository';
 import { loadAllManifestDatasets } from '../data/datasetLoader';
 import type { RowingFrame, DerivedMetrics } from '../types/rowing';
 import type { StrokeSegment } from '../types/strokeDetect';
-import type { DatasetStrokeData } from '../components/StrokeMetricsTable';
-import type { VelocityResult } from '../utils/velocityIntegration';
+import type { DatasetStrokeData } from '../types/analysis';
+import type { VelocityResult } from '../domain/analyzers';
+import type { DatasetState } from './useDataset';
+
+const EMPTY_STROKES: StrokeSegment[] = [];
 
 export interface UseAnalysisResult {
   frames: RowingFrame[];
@@ -21,7 +22,7 @@ export interface UseAnalysisResult {
   error: string | null;
 }
 
-export function useAnalysis(datasetState: any): UseAnalysisResult {
+export function useAnalysis(datasetState: DatasetState): UseAnalysisResult {
   const {
     customDatasets,
     datasets,
@@ -37,11 +38,13 @@ export function useAnalysis(datasetState: any): UseAnalysisResult {
     setMaxFrame(Math.max(frames.length - 1, 0));
   }, [frames.length, setMaxFrame]);
 
-  // strokes はストアに持たせず、frames から直接導出する（Step 4 の核心）
-  const strokes = useMemo<StrokeSegment[]>(() => {
-    if (frames.length < 10) return [];
-    return detectStrokes(frames);
-  }, [frames]);
+  const analysis = useMemo(
+    () => (frames.length > 0 ? getAnalysis(frames) : null),
+    [frames],
+  );
+
+  // strokes は状態ではなく、データセット参照ごとにキャッシュされた導出値。
+  const strokes = analysis?.strokes ?? EMPTY_STROKES;
 
   // 横断分析用にマニフェストの全フレームを非同期ロード
   const [allManifestFrames, setAllManifestFrames] = useState<
@@ -119,17 +122,10 @@ export function useAnalysis(datasetState: any): UseAnalysisResult {
     );
   }, [allDatasetsData, strokes]);
 
-  const activeDataset = datasetState.dataset;
-  const metrics = useMemo(
-    () => (activeDataset ? deriveMetrics(activeDataset) : null),
-    [activeDataset],
-  );
+  const metrics = analysis?.metrics ?? null;
 
   // 加速度積分による速度（getAnalysis は frames 参照でキャッシュ済み）
-  const velocity = useMemo<VelocityResult | null>(
-    () => (frames.length > 0 ? (getAnalysis(frames).extra.get('velocity') as VelocityResult) : null),
-    [frames],
-  );
+  const velocity = (analysis?.extra.get('velocity') as VelocityResult | undefined) ?? null;
 
   const error =
     datasetState.error ||

@@ -21,10 +21,9 @@
  */
 
 import type { RowingFrame } from '../types/rowing';
-import type { NormalizedFrame } from '../domain/schema';
+import { normalizeFrames, type NormalizedFrame } from '../domain/schema';
 import type { StrokePhase, PhaseSegment, StrokeSegment } from '../types/strokeDetect';
 import { buildOarTrajectoryInternal, type TrajectoryPoint } from './trajectory';
-import { getAnalysis } from '../domain/analysisRepository';
 
 // ─────────────────────────────────────────
 // FPS 推定（NormalizedFrame を使用）
@@ -63,7 +62,8 @@ function estimateFps(frames: NormalizedFrame[]): number {
  * フレーム列からストロークセグメント列を検出して返す。
  */
 export function detectStrokes(frames: RowingFrame[]): StrokeSegment[] {
-  return getAnalysis(frames).strokes;
+  const normalizedFrames = normalizeFrames(frames);
+  return detectStrokesInternal(normalizedFrames, buildOarTrajectoryInternal(normalizedFrames));
 }
 
 // ─────────────────────────────────────────

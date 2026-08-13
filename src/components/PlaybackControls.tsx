@@ -1,7 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import type { DatasetCsv, DatasetManifestItem, RowingFrame } from '../types/rowing';
-import type { GraphMode } from './TimeSeriesChart';
-import type { SpeedSource } from '../store/slices/viewSlice';
+import type { GraphMode, SpeedSource } from '../types/view';
 import { parseRowingCsv } from '../utils/csvParser';
 
 const toNumber = (value: unknown): number | null => {

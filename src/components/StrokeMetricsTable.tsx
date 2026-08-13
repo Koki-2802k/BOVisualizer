@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, memo } from 'react';
 import type { RowingFrame } from '../types/rowing';
 import type { StrokeSegment } from '../types/strokeDetect';
+import type { DatasetStrokeData } from '../types/analysis';
 import { buildOarTrajectory, type TrajectoryPoint } from '../utils/trajectory';
 import { isIdealAngle } from '../utils/oarAngle';
 import { usePlaybackStore } from '../store/playbackStore';
@@ -148,12 +149,7 @@ const Sparkline = memo(function Sparkline({ values, strokeColor, width = 180, he
 
 
 /** 全データセット横断表示用の1データセット分のデータ */
-export type DatasetStrokeData = {
-  id: string;
-  label: string;
-  frames: RowingFrame[];
-  strokes: StrokeSegment[];
-};
+export type { DatasetStrokeData } from '../types/analysis';
 
 type Props = {
   frames: RowingFrame[];
