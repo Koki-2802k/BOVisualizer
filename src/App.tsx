@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense, useState, useRef, useCallback, useMemo } from 'react';
+import { useEffect, lazy, Suspense, useState, useCallback, useMemo } from 'react';
 import PlaybackControls from './components/PlaybackControls';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useAnimationClock } from './hooks/useAnimationClock';
@@ -6,6 +6,7 @@ import { useDataset } from './hooks/useDataset';
 import { usePlaybackStore } from './store/playbackStore';
 import { useAnalysis } from './hooks/useAnalysis';
 import { usePlaybackShortcuts } from './hooks/usePlaybackShortcuts';
+import { useMetricsSnapshot } from './hooks/useMetricsSnapshot';
 import type { DashboardPanelId } from './types/view';
 import './App.css';
 import './index.css';
@@ -86,11 +87,6 @@ function App() {
     }
   }, [datasetState.manifest, setDatasets, customDatasets]);
 
-  // ファイルが増減したときにスナップショットをクリアし、グラフを最新状態に再構築する
-  useEffect(() => {
-    setMetricsSnapshot(null);
-  }, [datasets.length, Object.keys(customDatasets).length]);
-
   const { uiFrame } = useAnimationClock({
     frameCount: frames.length,
     fps,
@@ -98,41 +94,44 @@ function App() {
     seekFrame,
   });
 
-  const [activeTimeseriesTab, setActiveTimeseriesTab] = useState<'chart' | 'metrics'>('chart');
-  const [activeMapTab, setActiveMapTab] = useState<'map'>('map');
-  const [activeSceneTab, setActiveSceneTab] = useState<'scene'>('scene');
+  const [timeseriesTabSelection, setTimeseriesTabSelection] = useState<{
+    datasetId: string;
+    tab: 'chart' | 'metrics';
+  }>({ datasetId: '', tab: 'chart' });
   const [expandedPanel, setExpandedPanel] = useState<DashboardPanelId | null>(null);
 
-  // メトリクステーブル用スナップショット（リロード時のみ更新）
-  type MetricsSnapshot = {
-    frames: typeof frames;
-    strokes: typeof strokes;
-    allDatasetsData: typeof allDatasetsData;
-  };
-  const [metricsSnapshot, setMetricsSnapshot] = useState<MetricsSnapshot | null>(null);
-  // 最新の frames/strokes/allDatasetsData を ref に保持（コールバック内で stale closure を防ぐ）
-  const latestAnalysisRef = useRef({ frames, strokes, allDatasetsData });
-  useEffect(() => {
-    latestAnalysisRef.current = { frames, strokes, allDatasetsData };
+  const datasetCollectionKey = useMemo(
+    () => datasets.map(({ id }) => id).join('|'),
+    [datasets],
+  );
+  const {
+    captureSnapshot: handleReload,
+    snapshotFrames,
+    snapshotStrokes,
+    snapshotAllDatasetsData,
+  } = useMetricsSnapshot({
+    collectionKey: datasetCollectionKey,
+    frames,
+    strokes,
+    allDatasetsData,
   });
 
-  // リロード（手動・自動）完了時にスナップショットを更新するコールバック
-  const handleReload = useCallback(() => {
-    const { frames: f, strokes: s, allDatasetsData: a } = latestAnalysisRef.current;
-    setMetricsSnapshot({ frames: f, strokes: s, allDatasetsData: a });
-  }, []);
-
-  // スナップショット未作成時はリアルタイムの値を初期値として使用
-  const snapshotFrames = metricsSnapshot?.frames ?? frames;
-  const snapshotStrokes = metricsSnapshot?.strokes ?? strokes;
-  const snapshotAllDatasetsData = metricsSnapshot?.allDatasetsData ?? allDatasetsData;
-
-  // メトリクスタブが使えない状態になったら強制的にグラフタブへ戻す
-  useEffect(() => {
-    if (!analysisMode || !showStrokeMetrics || !hasAnyStrokes) {
-      setActiveTimeseriesTab('chart');
-    }
-  }, [analysisMode, showStrokeMetrics, hasAnyStrokes]);
+  const metricsTabAvailable = analysisMode && showStrokeMetrics && hasAnyStrokes;
+  const activeTimeseriesTab = metricsTabAvailable &&
+    timeseriesTabSelection.datasetId === selectedDatasetId
+    ? timeseriesTabSelection.tab
+    : 'chart';
+  const selectTimeseriesTab = useCallback((tab: 'chart' | 'metrics') => {
+    setTimeseriesTabSelection({ datasetId: selectedDatasetId, tab });
+  }, [selectedDatasetId]);
+  const handleAnalysisModeChange = useCallback((enabled: boolean) => {
+    setAnalysisMode(enabled);
+    if (!enabled) selectTimeseriesTab('chart');
+  }, [selectTimeseriesTab, setAnalysisMode]);
+  const handleShowStrokeMetricsChange = useCallback((show: boolean) => {
+    setShowStrokeMetrics(show);
+    if (!show) selectTimeseriesTab('chart');
+  }, [selectTimeseriesTab, setShowStrokeMetrics]);
 
   usePlaybackShortcuts({
     datasets,
@@ -200,11 +199,11 @@ function App() {
         onPlayOnSwitchChange={setPlayOnSwitch}
         analysisMode={analysisMode}
         strokeCount={strokes.length}
-        onAnalysisModeChange={setAnalysisMode}
+        onAnalysisModeChange={handleAnalysisModeChange}
         showStrokePhases={showStrokePhases}
         onShowStrokePhasesChange={setShowStrokePhases}
         showStrokeMetrics={showStrokeMetrics}
-        onShowStrokeMetricsChange={setShowStrokeMetrics}
+        onShowStrokeMetricsChange={handleShowStrokeMetricsChange}
         speedSource={speedSource}
         onSpeedSourceChange={setSpeedSource}
         speedIntegrationUsable={velocity?.usable ?? false}
@@ -227,17 +226,14 @@ function App() {
               <div style={{ ...panelHeaderStyle, paddingBottom: 0 }} onDoubleClick={() => handleExpandPanel('scene')}>
                 <button
                   type="button"
-                  className={`timeseries-tab-btn ${activeSceneTab === 'scene' ? 'active' : ''}`}
-                  onClick={() => setActiveSceneTab('scene')}
+                  className="timeseries-tab-btn active"
                 >
                   3Dグラフ
                 </button>
               </div>
               <div className="tab-content-wrapper">
                 <Suspense fallback={<div className="overlay-message loading">3D表示を読み込み中...</div>}>
-                  {activeSceneTab === 'scene' && (
-                    <Scene frames={frames} frameIndex={uiFrame} />
-                  )}
+                  <Scene frames={frames} frameIndex={uiFrame} />
                 </Suspense>
               </div>
             </ErrorBoundary>
@@ -287,23 +283,20 @@ function App() {
               <div style={{ ...panelHeaderStyle, paddingBottom: 0 }} onDoubleClick={() => handleExpandPanel('map')}>
                 <button
                   type="button"
-                  className={`timeseries-tab-btn ${activeMapTab === 'map' ? 'active' : ''}`}
-                  onClick={() => setActiveMapTab('map')}
+                  className="timeseries-tab-btn active"
                 >
                   GPS地図
                 </button>
               </div>
               <div className="tab-content-wrapper">
                 <Suspense fallback={<div className="overlay-message loading">地図を読み込み中...</div>}>
-                  {activeMapTab === 'map' && (
-                    <RowingMap
-                      key={`map-${expandedPanel ?? 'none'}`}
-                      gpsPoints={metrics?.gpsValidPoints && metrics.gpsValidPoints.length > 0
-                        ? metrics.gpsValidPoints
-                        : []}
-                      frameIndex={uiFrame}
-                    />
-                  )}
+                  <RowingMap
+                    key={`map-${expandedPanel ?? 'none'}`}
+                    gpsPoints={metrics?.gpsValidPoints && metrics.gpsValidPoints.length > 0
+                      ? metrics.gpsValidPoints
+                      : []}
+                    frameIndex={uiFrame}
+                  />
                 </Suspense>
               </div>
             </ErrorBoundary>
@@ -319,7 +312,7 @@ function App() {
                 <button
                   type="button"
                   className={`timeseries-tab-btn ${activeTimeseriesTab === 'chart' ? 'active' : ''}`}
-                  onClick={() => setActiveTimeseriesTab('chart')}
+                  onClick={() => selectTimeseriesTab('chart')}
                 >
                   時系列グラフ
                 </button>
@@ -327,7 +320,7 @@ function App() {
                   <button
                     type="button"
                     className={`timeseries-tab-btn ${activeTimeseriesTab === 'metrics' ? 'active' : ''}`}
-                    onClick={() => setActiveTimeseriesTab('metrics')}
+                    onClick={() => selectTimeseriesTab('metrics')}
                   >
                     メトリクス
                   </button>
