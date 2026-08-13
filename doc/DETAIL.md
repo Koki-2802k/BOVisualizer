@@ -1,13 +1,13 @@
 # BOVisualizer 詳細設計・引継ぎ資料
 
 > **対象読者**: 本システムをこれから開発・保守・拡張する開発者  
-> **作成日**: 2026-06-08  
+> **作成日**: 2026-06-08（最終更新: 2026-08-13）
 > **関連資料**: [HISTORY.md](./HISTORY.md) / [IDEA_NEWFUNC.md](./IDEA_NEWFUNC.md) / [README.md](../README.md)
 
 ---
 
 ## 目次
-o
+
 1. [システム概要](#1-システム概要)
 2. [技術スタック](#2-技術スタック)
 3. [ディレクトリ構造と役割](#3-ディレクトリ構造と役割)
@@ -38,9 +38,9 @@ o
 | **時系列グラフ** | 速度・加速度・角速度・SPM・SPLITの同期プロット |
 | **オール軌跡** | ブレード先端の2D/3D軌跡チャート |
 | **ストローク分析** | ストローク自動検出・4位相分割（キャッチ/ドライブ/フィニッシュ/リカバリー） |
-| **メトリクス表** | ストローク毎のキャッチ角・フィニッシュ角・スイープ角・リズムの集計 |
+| **メトリクス表** | ストローク毎の左右キャッチ/フィニッシュ角・角度差・理想角度割合の集計 |
 | **再生制御** | シーク・再生速度調整・位相単位ジャンプ |
-| **データロード** | リモートマニフェスト・ローカルフォルダ選択・CSV D&D・自動リロード |
+| **データロード** | リモートマニフェスト・ローカルフォルダ/ファイル選択・自動リロード |
 
 ---
 
@@ -54,8 +54,8 @@ o
 | 状態管理 | Zustand | 5.x | グローバル状態管理 |
 | 3D描画 | Three.js + @react-three/fiber + @react-three/drei | — | 3Dシーン |
 | 地図 | Leaflet + react-leaflet | — | GPS地図 |
-| グラフ | Recharts | — | 時系列・軌跡グラフ |
-| CSVパース | PapaParse | — | CSVデータ解析 |
+| グラフ | Canvas 2D API | Web標準 | 時系列・軌跡グラフ |
+| CSVパース | 型付き独自パーサー | — | CSV検証・データ正規化 |
 | テスト | Vitest | — | ユニットテスト |
 | E2Eテスト | CDP (Chrome DevTools Protocol) | — | ブラウザ統合テスト |
 
@@ -84,7 +84,9 @@ BOVisualizer/
     ├── App.css                    # ダッシュボードレイアウト・UIスタイル全体
     │
     ├── data/                      # ★ データ層
-    │   └── datasetLoader.ts       # マニフェスト・CSV の fetch を一元管理
+    │   ├── csvParser.ts           # CSVの検証・正規化
+    │   ├── datasetLoader.ts       # マニフェスト・リモートCSVのfetchを一元管理
+    │   └── localDatasetLoader.ts  # ローカルCSVの読み込み・障害分離
     │
     ├── domain/                    # ★ ドメイン層（純粋計算・キャッシュ・レジストリ）
     │   ├── schema.ts              # NormalizedFrame型・METRIC_COLUMNS定義
@@ -94,13 +96,15 @@ BOVisualizer/
     │   │   ├── types.ts           # Analyzer<T>・AnalysisInputインターフェース
     │   │   ├── strokeAnalyzer.ts  # 組み込み: ストローク検出アナライザー
     │   │   ├── metricsAnalyzer.ts # 組み込み: メトリクス導出アナライザー
-
+    │   │   ├── velocityAnalyzer.ts      # 追加: 加速度積分速度
+    │   │   └── strokeMetricsAnalyzer.ts # 追加: ストローク別指標
     │   └── panels/
     │       ├── index.ts           # PANELSレジストリ（新パネルはここに登録）
     │       └── types.ts           # PanelDefinitionインターフェース
     │
     ├── store/                     # ★ 状態層（Zustand）
     │   ├── playbackStore.ts       # 3スライスを結合した合成ストア
+    │   ├── types.ts               # 全スライス共通の型付きストア契約
     │   └── slices/
     │       ├── playbackSlice.ts   # 再生制御: isPlaying / fps / seekFrame / maxFrame
     │       ├── datasetSlice.ts    # データセット管理: datasets / selectedId / customDS
@@ -108,21 +112,24 @@ BOVisualizer/
     │
     ├── hooks/                     # カスタムフック
     │   ├── useDataset.ts          # データセットのfetch・ローディング管理
-    │   ├── useAnalysis.ts         # 解析結果の集約・allDatasetsData横断計算
-    │   └── useAnimationClock.ts   # requestAnimationFrameによる再生タイマー
+    │   ├── useLocalDatasets.ts    # ローカル選択・再読み込み処理
+    │   ├── useAnalysis.ts         # キャッシュ済み解析結果・横断指標の集約
+    │   ├── useMetricsSnapshot.ts  # ロード中の表示スナップショット
+    │   ├── useAnimationClock.ts   # requestAnimationFrameによる再生タイマー
+    │   ├── usePlaybackShortcuts.ts # 再生・位相移動ショートカット
+    │   └── useResponsiveCanvas.ts # Canvasサイズ・DPR・再描画の共通制御
     │
     ├── utils/                     # ★ 純粋関数群（副作用なし）
     │   ├── coordTransform.ts      # センサー座標系変換・クォータニオン演算
     │   ├── trajectory.ts          # オール軌跡計算（公開ラッパー + 内部実装）
     │   ├── strokeDetect.ts        # ストローク検出（公開ラッパー + 内部実装）
     │   ├── metrics.ts             # メトリクス導出（公開ラッパー + 内部実装）
-    │   ├── csvParser.ts           # PapaParseを使ったCSVパーサー
     │   └── oarAngle.ts            # オール角度計算ユーティリティ
     │
     ├── components/                # ★ 表示層（Reactコンポーネント）
     │   ├── Scene.tsx              # 3Dシーン（Three.js / @react-three/fiber）
-    │   ├── OarTrajectoryChart.tsx # オール軌跡グラフ（Recharts）
-    │   ├── TimeSeriesChart.tsx    # 時系列グラフ（Recharts）
+    │   ├── OarTrajectoryChart.tsx # オール軌跡グラフ（Canvas）
+    │   ├── TimeSeriesChart.tsx    # 時系列グラフ（Canvas）
     │   ├── RowingMap.tsx          # GPS地図（Leaflet）
     │   ├── PlaybackControls.tsx   # 再生UI・設定ポップオーバー
     │   ├── MetricsBar.tsx         # 上部メトリクス表示バー
@@ -130,7 +137,10 @@ BOVisualizer/
     │   └── ErrorBoundary.tsx      # エラー境界コンポーネント
     │
     ├── types/                     # TypeScript型定義
-    │   ├── rowing.ts              # 共通型（RowingFrame, DatasetCsv, DerivedMetrics等）
+    │   ├── rowing.ts              # 計測データ型（RowingFrame, DatasetCsv等）
+    │   ├── analysis.ts            # 表示へ渡す解析結果型
+    │   ├── fileSystemAccess.ts    # ブラウザファイルAPI型
+    │   ├── view.ts                # 表示モード型
     │   └── strokeDetect.ts        # ストローク関連型（StrokeSegment, PhaseSegment等）
     │
     ├── scene/                     # 3Dシーン用定数
@@ -155,15 +165,17 @@ BOVisualizer/
 
 ### 4.1 データ層 (`src/data/`)
 
-CSVおよびマニフェストファイルの取得・パースを担当します。外部からデータを取り込む唯一の窓口です。
+CSVおよびマニフェストファイルの取得・パースを担当します。リモート入力とローカル入力をこの層で同じ `DatasetCsv` に変換し、不正なファイルはデータ境界で隔離します。
 
-**`datasetLoader.ts`** の3つの公開関数:
+主な公開API:
 
-| 関数 | 説明 |
-| :--- | :--- |
-| `fetchManifest()` | `public/data/manifest.json` を fetch してデータセット一覧を返す |
-| `fetchDatasetCsv(item)` | マニフェスト項目のCSVをfetch・パースして `DatasetCsv` を返す |
-| `loadAllManifestDatasets(manifest)` | 全マニフェストCSVを非同期一括取得（横断分析用） |
+| ファイル | 関数 | 説明 |
+| :--- | :--- | :--- |
+| `csvParser.ts` | `parseRowingCsv()` | ヘッダーを検証し、CSV本文を `DatasetCsv` へ変換する |
+| `datasetLoader.ts` | `fetchManifest()` | `public/data/manifest.json` を fetch してデータセット一覧を返す |
+| `datasetLoader.ts` | `fetchDatasetCsv(item)` | マニフェスト項目のCSVをfetch・パースして `DatasetCsv` を返す |
+| `datasetLoader.ts` | `loadAllManifestDatasets(manifest)` | 全マニフェストCSVを非同期一括取得（横断分析用） |
+| `localDatasetLoader.ts` | `loadDatasetsFromDirectory(handle)` | 選択フォルダのCSVを個別に読み込み、壊れたファイルだけを除外する |
 
 ### 4.2 ドメイン層 (`src/domain/`)
 
@@ -178,6 +190,7 @@ const analysis = getAnalysis(frames);
 // analysis.strokes     … ストローク分割結果
 // analysis.metrics     … 時系列メトリクス
 // analysis.extra       … 追加アナライザー結果（Map<string, unknown>）
+const strokeMetrics = getAnalysisResult(analysis, 'strokeMetrics');
 ```
 
 **`schema.ts`** — 型定義と変換:
@@ -189,10 +202,13 @@ const analysis = getAnalysis(frames);
 **`analyzers/index.ts`** — 追加アナライザーのレジストリ:
 
 ```ts
-export const ANALYZERS: Analyzer<any>[] = [
-  // ← 新しいアナライザーをここに追加するだけで自動実行される
+export const ANALYZERS: Analyzer<unknown>[] = [
+  velocityAnalyzer,
+  strokeMetricsAnalyzer,
 ];
 ```
+
+追加結果は `AnalysisResultMap` と `getAnalysisResult()` を通して型付きで参照します。`strokeAnalyzer` と `metricsAnalyzer` は中核結果を構成するためリポジトリから直接実行されます。
 
 **`panels/index.ts`** — 表示パネルのレジストリ:
 
@@ -209,6 +225,8 @@ export const PANELS = [
 ### 4.3 状態層 (`src/store/`)
 
 Zustandの3スライスで構成されます。**重い算出値（軌跡・ストローク情報）はストアに持たせず、ドメイン・キャッシュ層へ委譲** します。
+
+全スライスは `store/types.ts` の `PlaybackStoreState` を共有し、スライス生成時にも `any` を使用しません。
 
 | スライス | ファイル | 管理する状態 |
 | :--- | :--- | :--- |
@@ -379,7 +397,7 @@ interface StrokeSegment {
 
 ### 7.2 オール軌跡チャート (`src/components/OarTrajectoryChart.tsx`)
 
-**`buildOarTrajectory(frames)`** を通じて取得した `TrajectoryPoint[]` をRechartsの `ScatterChart` で描画します。
+`useAnalysis()` が `AnalysisRepository` から取得したキャッシュ済み `TrajectoryPoint[]` を受け取り、Canvasへ描画します。コンポーネント内では軌跡を再計算しません。
 
 軌跡計算の詳細は [11章](#11-座標変換エンジンの詳細) を参照。
 
@@ -389,7 +407,7 @@ interface StrokeSegment {
 
 ### 7.3 時系列グラフ (`src/components/TimeSeriesChart.tsx`)
 
-RechartsのComposedChartで複数系列を同期描画します。
+Canvasで複数系列を同期描画します。`OarTrajectoryChart` と共通の `useResponsiveCanvas()` を利用し、要素サイズ・DPR・初期レイアウト完了後の再描画を一元制御します。
 
 **グラフ系列**: `METRIC_COLUMNS` に定義された列（`speed`, `accx`...`gyroz`, `SPM`, `SPLIT`）が `graphSeries` として `DerivedMetrics` に含まれます。新しい計測列を追加する場合は `src/domain/schema.ts` の `METRIC_COLUMNS` に追加するだけです。
 
@@ -414,7 +432,7 @@ LeafletのOpenStreetMapタイルを背景に、GPS軌跡と現在位置ピンを
 - FPS調整
 - データセット切り替え
 - 設定ポップオーバー（各種トグル、自動リロード設定）
-- ローカルフォルダ選択・CSV D&D
+- ローカルフォルダ選択・CSVファイル選択
 
 **キーボードショートカット**:
 | キー | 動作 |
@@ -431,11 +449,13 @@ LeafletのOpenStreetMapタイルを背景に、GPS軌跡と現在位置ピンを
 
 **表示項目**:
 - ストローク番号、開始/終了フレーム
-- 各位相のフレーム範囲（キャッチ/ドライブ/フィニッシュ/リカバリー）
-- 左右オールのキャッチ角・フィニッシュ角・スイープ角
-- リズム（水中/水上比）
+- 左右オールのキャッチ角・フィニッシュ角
+- キャッチ角差・フィニッシュ角差
+- 左右オールが理想角度範囲にある割合
 
-**全データセット横断表示**: `allDatasetsData` が存在する場合、複数データセットの比較テーブルも表示します。
+値は `strokeMetricsAnalyzer` がキャッシュ済み軌跡とストロークから算出します。表示コンポーネントは計算を行わず、`strokeMetrics` または `allStrokeMetrics` をページ分割して描画します。
+
+**全データセット横断表示**: `allStrokeMetrics` が存在する場合、複数データセットの比較テーブルも表示します。
 
 ### 7.7 メトリクスバー (`src/components/MetricsBar.tsx`)
 
@@ -443,7 +463,7 @@ LeafletのOpenStreetMapタイルを背景に、GPS軌跡と現在位置ピンを
 
 ### 7.8 自動リロード機能
 
-`setInterval` を使ったバックグラウンドリロードで、選択ディレクトリを再スキャンして新しいCSVデータを検出します。設定ポップオーバーで有効/無効・間隔（秒）を設定可能です。
+`useLocalDatasets()` がバックグラウンドリロードを管理し、選択ディレクトリを再スキャンして新しいCSVデータを検出します。設定ポップオーバーで有効/無効・間隔（秒）を設定可能です。
 
 **スナップショット機構**: リロード中もメトリクステーブル等の表示を維持するため、ロード完了まで前の `metricsSnapshot` を保持します。これにより、データ更新中の一瞬の表示消えを防ぎます。
 
@@ -652,7 +672,7 @@ Q_final = Q_boat_yaw_correction × Q_oar_error_correction × Q_sensor_to_three �
 
 ### 拡張ポイント① — 新しい解析アルゴリズムの追加
 
-1. `src/domain/analyzers/` に `MyAnalyzer.ts` を作成:
+1. `src/domain/analyzers/` に `myAnalyzer.ts` を作成:
 
 ```ts
 // src/domain/analyzers/myAnalyzer.ts
@@ -679,16 +699,16 @@ export const myAnalyzer: Analyzer<MyAnalysisResult> = {
 ```ts
 import { myAnalyzer } from './myAnalyzer';
 
-export const ANALYZERS: Analyzer<any>[] = [
+export const ANALYZERS: Analyzer<unknown>[] = [
   myAnalyzer,  // ← ここに追加するだけ
 ];
 ```
 
-3. コンポーネントから結果を取得:
+3. `analysisRepository.ts` の `AnalysisResultMap` に `myAnalysis: MyAnalysisResult` を追加し、コンポーネントから型付きで取得:
 
 ```ts
-const { analysis } = useAnalysis(datasetState);
-const result = analysis?.extra.get('myAnalysis') as MyAnalysisResult | undefined;
+const analysis = getAnalysis(frames);
+const result = getAnalysisResult(analysis, 'myAnalysis');
 ```
 
 ### 拡張ポイント② — 新しい表示パネルの追加
@@ -731,11 +751,12 @@ export const METRIC_COLUMNS = [
 
 ```ts
 // App.tsx → useAnalysis → 各コンポーネントへprops渡し
-const { frames, strokes, metrics, allDatasetsData } = useAnalysis(datasetState);
+const { frames, trajectory, strokes, metrics, strokeMetrics, allStrokeMetrics } =
+  useAnalysis(datasetState);
 
-// または、analysis.extraから拡張アナライザーの結果を取得
+// または、リポジトリから型付きの拡張アナライザー結果を取得
 const analysis = getAnalysis(frames);  // リポジトリ経由（キャッシュ利用）
-const symmetry = analysis.extra.get('symmetry') as SymmetryResult | undefined;
+const velocity = getAnalysisResult(analysis, 'velocity');
 ```
 
 ---
@@ -748,7 +769,7 @@ const symmetry = analysis.extra.get('symmetry') as SymmetryResult | undefined;
 npm run test
 ```
 
-`src/test/` 配下にテストが配置されています。現在45件のテストが存在し、すべてパスしていることが確認されています。
+`src/test/` 配下にテストが配置されています。2026-08-13時点で65件のテストが存在し、すべてパスしていることを確認しています。
 
 テスト対象:
 - 座標変換モジュール（`coordTransform.ts`）
@@ -756,6 +777,9 @@ npm run test
 - 軌跡計算エンジン（`trajectory.ts`）
 - ストローク検出（`strokeDetect.ts`）
 - メトリクス導出（`metrics.ts`）
+- 解析リポジトリと追加アナライザー（`analysisRepository.ts` / `velocityAnalyzer.ts` / `strokeMetricsAnalyzer.ts`）
+- ローカル入力の障害分離（`localDatasetLoader.ts`）
+- 再生クロックと型付きストア（`useAnimationClock.ts` / `playbackStore.ts`）
 
 ### 14.2 E2Eテスト（CDP）
 
@@ -764,6 +788,7 @@ npm run e2e:cdp
 ```
 
 Chrome DevTools Protocol を直接操作して、実際のブラウザ上での3Dシーンロード・アニメーション動作・エラーハンドリングをテストします（`scripts/cdp-e2e.mjs`）。
+対象アプリとCDP対応ブラウザを事前に起動し、必要に応じて `E2E_BASE_URL`、`E2E_CDP_URL`、`E2E_VIEWPORTS` を指定します。
 
 ### 14.3 ビルド検証
 
@@ -771,7 +796,7 @@ Chrome DevTools Protocol を直接操作して、実際のブラウザ上での3
 npm run build
 ```
 
-TypeScriptコンパイルエラーの検出とバンドルの正常生成を確認します。ビルド時間の目安: ~900ms。
+TypeScriptコンパイルエラーの検出とバンドルの正常生成を確認します。
 
 ### 14.4 Lintチェック
 
@@ -844,7 +869,7 @@ Leafletは初期化時にコンテナのサイズを読み取るため、非表�
 
 ### 16.4 `StrokeMetricsTable.tsx` の巨大化
 
-現在のファイルサイズは約34KBで、メトリクス計算ロジック・表示・設定UIが混在しています。今後拡張する場合は計算部をアナライザーに分離し、表示コンポーネントを分割することを検討してください。
+メトリクス計算は `strokeMetricsAnalyzer.ts` に分離済みです。表示側へ計算を戻さず、列や表示形式が増える場合は表示専用の小コンポーネントへ分割してください。
 
 ### 16.5 クォータニオンの符号フリップ問題
 
@@ -852,7 +877,7 @@ Leafletは初期化時にコンテナのサイズを読み取るため、非表�
 
 ### 16.6 `ANALYZERS` レジストリの組み込みアナライザーについて
 
-`strokeAnalyzer` と `metricsAnalyzer` は型安全のため `analysisRepository.ts` から直接呼ばれており、`ANALYZERS` 配列には含まれていません。`ANALYZERS` は「組み込み以外の追加アナライザー」のリストです。
+`strokeAnalyzer` と `metricsAnalyzer` は中核結果を構成するため `analysisRepository.ts` から直接呼ばれます。`velocityAnalyzer` と `strokeMetricsAnalyzer` は `ANALYZERS` に登録され、結果は `getAnalysisResult()` から型付きで取得します。
 
 ---
 

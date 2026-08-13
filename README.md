@@ -25,7 +25,7 @@
    - 航走した経路全体と、現在フレームにおける艇の位置をアニメーションでマッピング。
 
 4. **マルチモード時系列グラフ**
-   - Rechartsを用いたインタラクティブな時系列プロット。
+   - Canvasを用いた軽量な時系列プロット。
    - 速度（Speed）、3軸加速度（accx, accy, accz）、3軸角速度（gyrox, gyroy, gyroz）、ストローク数（SPM）、スプリットタイム（SPLIT）などを同期描画。
    - 再生ヘッドの動きに合わせてグラフ上の現在値バーがスムーズに移動。
 
@@ -51,10 +51,10 @@
 - **ビジュアライゼーション**
   - [Three.js](https://threejs.org/) / [@react-three/fiber](https://github.com/pmndrs/react-three-fiber) / [@react-three/drei](https://github.com/pmndrs/drei)
   - [Leaflet](https://leafletjs.com/) / [react-leaflet](https://react-leaflet.js.org/) (高機能マップコンポーネント)
-  - [Recharts](https://recharts.org/) (レスポンシブな時系列・軌跡チャート)
+  - Canvas 2D API (レスポンシブな時系列・軌跡チャート)
 
 - **データ処理**
-  - [PapaParse](https://www.papaparse.com/) (CSVデータのパース)
+  - データ層の型付きCSVパーサー
   - 自社開発のローイング専用メトリクス・座標系変換エンジン
 
 - **テスト**
@@ -77,6 +77,8 @@ BOVisualizer/
 │   └── cdp-e2e.mjs          # CDPによるヘッドレス/E2E検証スクリプト
 ├── src/
 │   ├── assets/              # スタイル等アセット
+│   ├── data/                # CSV解析・リモート/ローカルデータ読み込み境界
+│   ├── domain/              # 正規化・解析キャッシュ・アナライザー
 │   ├── components/          # Reactコンポーネント
 │   │   ├── Scene.tsx               # 3Dシーン描画コンポーネント
 │   │   ├── OarTrajectoryChart.tsx  # オール軌跡グラフ
@@ -85,12 +87,12 @@ BOVisualizer/
 │   │   ├── PlaybackControls.tsx    # 再生・設定UI
 │   │   ├── MetricsBar.tsx          # 走行指標表示バー
 │   │   └── ErrorBoundary.tsx       # 耐障害用エラーハンドラー
-│   ├── hooks/               # カスタムフック (AnimationClock, Dataset読み込み等)
+│   ├── hooks/               # データ・解析・再生・Canvasを接続するカスタムフック
 │   ├── scene/               # 3Dシーン用定数定義
-│   ├── store/               # Zustandを用いた再生状態・データ永続化管理
-│   ├── test/                # 単体テスト群 (座標変換、軌跡計算、CSVパーサー等)
+│   ├── store/               # 型付きZustandスライスによる状態管理
+│   ├── test/                # データ境界・解析・再生を含む単体テスト群
 │   ├── types/               # TypeScript共通型定義
-│   └── utils/               # 座標計算・物理値変換・CSV解析の純粋関数群
+│   └── utils/               # 座標計算・物理値変換の純粋関数群
 ├── package.json             # 依存パッケージ定義
 ├── tsconfig.json            # TypeScript設定
 └── vite.config.ts           # Viteビルド設定
@@ -136,6 +138,7 @@ npm run build
 
 - **E2Eテスト (Chrome DevTools Protocol)**
   Chrome DevTools Protocol (CDP) を使用して、実際にブラウザ上で3Dシーンのローディングやアニメーション動作、エラーハンドリングをシミュレーションテストします。
+  実行前に、対象アプリを `http://127.0.0.1:5175/`、CDP対応ブラウザを `http://127.0.0.1:9222/` で起動します。接続先は `E2E_BASE_URL` と `E2E_CDP_URL` で変更できます。
   ```bash
   npm run e2e:cdp
   ```
@@ -180,4 +183,3 @@ npm run build
 
 ---
 © 2026 BOVisualizer Development Team
-
