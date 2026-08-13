@@ -4,8 +4,9 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { useAnimationClock } from './hooks/useAnimationClock';
 import { useDataset } from './hooks/useDataset';
 import { usePlaybackStore } from './store/playbackStore';
-import { seekByPhase } from './utils/strokeDetect';
 import { useAnalysis } from './hooks/useAnalysis';
+import { usePlaybackShortcuts } from './hooks/usePlaybackShortcuts';
+import type { DashboardPanelId } from './types/view';
 import './App.css';
 import './index.css';
 
@@ -100,7 +101,7 @@ function App() {
   const [activeTimeseriesTab, setActiveTimeseriesTab] = useState<'chart' | 'metrics'>('chart');
   const [activeMapTab, setActiveMapTab] = useState<'map'>('map');
   const [activeSceneTab, setActiveSceneTab] = useState<'scene'>('scene');
-  const [expandedPanel, setExpandedPanel] = useState<string | null>(null);
+  const [expandedPanel, setExpandedPanel] = useState<DashboardPanelId | null>(null);
 
   // メトリクステーブル用スナップショット（リロード時のみ更新）
   type MetricsSnapshot = {
@@ -133,85 +134,23 @@ function App() {
     }
   }, [analysisMode, showStrokeMetrics, hasAnyStrokes]);
 
-
-  // Global Spacebar shortcut to play/pause & Arrow keys to change datasets
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        document.activeElement?.tagName === 'INPUT' ||
-        document.activeElement?.tagName === 'SELECT' ||
-        document.activeElement?.tagName === 'TEXTAREA'
-      ) {
-        return;
-      }
-
-      // Esc でフィーチャーパネルを閉じる
-      if (event.code === 'Escape') {
-        if (expandedPanel) {
-          event.preventDefault();
-          setExpandedPanel(null);
-        }
-        return;
-      }
-
-      if (event.code === 'Space') {
-        event.preventDefault();
-        setIsPlaying(!isPlaying);
-      }
-
-      // Shift + ← / → : 前後の位相へシーク
-      if (event.shiftKey && event.code === 'ArrowRight') {
-        event.preventDefault();
-        const nextFrame = seekByPhase(strokes, uiFrame, +1);
-        setSeekFrame(nextFrame);
-        return;
-      }
-      if (event.shiftKey && event.code === 'ArrowLeft') {
-        event.preventDefault();
-        const nextFrame = seekByPhase(strokes, uiFrame, -1);
-        setSeekFrame(nextFrame);
-        return;
-      }
-
-      if (event.code === 'ArrowRight') {
-        event.preventDefault();
-        if (!datasets || datasets.length <= 1) {
-          return;
-        }
-        const currentIndex = datasets.findIndex((d) => d.id === selectedDatasetId);
-        if (currentIndex !== -1 && currentIndex < datasets.length - 1) {
-          const nextDataset = datasets[currentIndex + 1];
-          if (nextDataset && nextDataset.id) {
-            setSelectedDatasetId(nextDataset.id);
-          }
-        }
-      }
-
-      if (event.code === 'ArrowLeft') {
-        event.preventDefault();
-        if (!datasets || datasets.length <= 1) {
-          return;
-        }
-        const currentIndex = datasets.findIndex((d) => d.id === selectedDatasetId);
-        if (currentIndex > 0) {
-          const prevDataset = datasets[currentIndex - 1];
-          if (prevDataset && prevDataset.id) {
-            setSelectedDatasetId(prevDataset.id);
-          }
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isPlaying, setIsPlaying, datasets, selectedDatasetId, setSelectedDatasetId, strokes, uiFrame, setSeekFrame, expandedPanel, setExpandedPanel]);
+  usePlaybackShortcuts({
+    datasets,
+    selectedDatasetId,
+    isPlaying,
+    currentFrame: uiFrame,
+    strokes,
+    expandedPanel,
+    onDatasetChange: setSelectedDatasetId,
+    onExpandedPanelChange: setExpandedPanel,
+    onPlayChange: setIsPlaying,
+    onSeekChange: setSeekFrame,
+  });
 
   const currentFrame = frames[uiFrame] ?? null;
 
   // パネル拡大・縮小ハンドラ
-  const handleExpandPanel = (panelId: string) => setExpandedPanel(panelId);
+  const handleExpandPanel = (panelId: DashboardPanelId) => setExpandedPanel(panelId);
   const handleCloseExpanded = (e: React.MouseEvent) => {
     e.stopPropagation();
     setExpandedPanel(null);
