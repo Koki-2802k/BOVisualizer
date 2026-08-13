@@ -39,7 +39,7 @@ export function useResponsiveCanvas(draw: CanvasDraw) {
     animationFrameRef.current = null;
   }, []);
 
-  const drawCanvas = useCallback(() => {
+  const drawCanvas = useCallback(function drawCanvasFrame() {
     animationFrameRef.current = null;
     const canvas = canvasRef.current;
     const wrapper = wrapperRef.current;
@@ -49,7 +49,7 @@ export function useResponsiveCanvas(draw: CanvasDraw) {
     if (!box) {
       if (measureRetryRef.current < MAX_MEASURE_RETRIES) {
         measureRetryRef.current += 1;
-        animationFrameRef.current = window.requestAnimationFrame(drawCanvas);
+        animationFrameRef.current = window.requestAnimationFrame(drawCanvasFrame);
       }
       return;
     }
