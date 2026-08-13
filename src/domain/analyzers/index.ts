@@ -13,9 +13,11 @@ export { strokeAnalyzer } from './strokeAnalyzer';
 export { metricsAnalyzer } from './metricsAnalyzer';
 export { velocityAnalyzer } from './velocityAnalyzer';
 export type { VelocityResult } from './velocityAnalyzer';
+export { strokeMetricsAnalyzer } from './strokeMetricsAnalyzer';
 
 import type { Analyzer } from './types';
 import { velocityAnalyzer } from './velocityAnalyzer';
+import { strokeMetricsAnalyzer } from './strokeMetricsAnalyzer';
 
 /**
  * 組み込み以外の追加アナライザー登録リスト。
@@ -31,5 +33,6 @@ import { velocityAnalyzer } from './velocityAnalyzer';
  */
 export const ANALYZERS: Analyzer<unknown>[] = [
   velocityAnalyzer, // 加速度積分による速度推定 → extra.get('velocity')
+  strokeMetricsAnalyzer,
   // ← 新しいアナライザーをここに追加
 ];

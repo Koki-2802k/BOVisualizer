@@ -3,6 +3,13 @@ import { normalizeFrames, type NormalizedFrame } from './schema';
 import { buildOarTrajectoryInternal, type TrajectoryPoint } from '../utils/trajectory';
 import type { StrokeSegment } from '../types/strokeDetect';
 import { strokeAnalyzer, metricsAnalyzer, ANALYZERS } from './analyzers';
+import type { VelocityResult } from './analyzers';
+import type { StrokeMetricRow } from '../types/analysis';
+
+export interface AnalysisResultMap {
+  velocity: VelocityResult;
+  strokeMetrics: StrokeMetricRow[];
+}
 
 export interface DatasetAnalysis {
   /** 正規化済みフレーム（型付きアクセス用; キャッシュされる） */
@@ -70,4 +77,11 @@ export function getAnalysis(frames: RowingFrame[]): DatasetAnalysis {
 
 export function clearAnalysisCache(): void {
   analysisCache = new WeakMap<RowingFrame[], DatasetAnalysis>();
+}
+
+export function getAnalysisResult<TResultKey extends keyof AnalysisResultMap>(
+  analysis: DatasetAnalysis,
+  resultKey: TResultKey,
+): AnalysisResultMap[TResultKey] | undefined {
+  return analysis.extra.get(resultKey) as AnalysisResultMap[TResultKey] | undefined;
 }
