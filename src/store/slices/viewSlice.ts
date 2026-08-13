@@ -6,34 +6,11 @@
  * 他スライスへの依存なし。
  */
 import type { StateCreator } from 'zustand';
-import type { GraphMode, OarSide, SpeedSource } from '../../types/view';
+import type { PlaybackState, ViewSlice } from '../types';
 
 export type { SpeedSource } from '../../types/view';
 
-export type ViewSlice = {
-  oarSide: OarSide;
-  graphMode: GraphMode;
-  initialOarSide: OarSide;
-  initialGraphMode: GraphMode;
-  playOnSwitch: boolean;
-  analysisMode: boolean;
-  showStrokePhases: boolean;
-  showStrokeMetrics: boolean;
-  /** 速度グラフのソース（既定: 積分値） */
-  speedSource: SpeedSource;
-  setOarSide: (side: OarSide) => void;
-  setGraphMode: (graphMode: GraphMode) => void;
-  setInitialOarSide: (side: OarSide) => void;
-  setInitialGraphMode: (mode: GraphMode) => void;
-  setPlayOnSwitch: (play: boolean) => void;
-  setAnalysisMode: (enabled: boolean) => void;
-  setShowStrokePhases: (show: boolean) => void;
-  setShowStrokeMetrics: (show: boolean) => void;
-  setSpeedSource: (source: SpeedSource) => void;
-};
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createViewSlice: StateCreator<any, [], [], ViewSlice> = (set) => ({
+export const createViewSlice: StateCreator<PlaybackState, [], [], ViewSlice> = (set) => ({
   oarSide: 'right',
   graphMode: 'acceleration',
   initialOarSide: 'right',

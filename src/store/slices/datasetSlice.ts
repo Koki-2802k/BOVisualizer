@@ -9,8 +9,7 @@
  */
 import type { StateCreator } from 'zustand';
 import type { DatasetCsv, DatasetManifestItem } from '../../types/rowing';
-import type { PlaybackSlice } from './playbackSlice';
-import type { ViewSlice } from './viewSlice';
+import type { DatasetSlice, PlaybackState } from '../types';
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
@@ -21,28 +20,7 @@ const sortDatasets = (datasets: DatasetManifestItem[]): DatasetManifestItem[] =>
     return cmp !== 0 ? cmp : a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' });
   });
 
-export type DatasetSlice = {
-  datasets: DatasetManifestItem[];
-  selectedDatasetId: string;
-  customDatasets: Record<string, DatasetCsv>;
-  directoryHandle: FileSystemDirectoryHandle | null;
-  autoReloadEnabled: boolean;
-  autoReloadInterval: number;
-  setDatasets: (datasets: DatasetManifestItem[]) => void;
-  setSelectedDatasetId: (datasetId: string) => void;
-  addCustomDataset: (id: string, label: string, data: DatasetCsv) => void;
-  setCustomDatasets: (items: Array<{ id: string; label: string; data: DatasetCsv }>) => void;
-  setDirectoryHandle: (handle: FileSystemDirectoryHandle | null) => void;
-  setAutoReloadEnabled: (enabled: boolean) => void;
-  setAutoReloadInterval: (interval: number) => void;
-};
-
-/** get() で取得する他スライスの状態（実際のスライス型から Pick して型安全を保証） */
-type CrossSliceState = Pick<PlaybackSlice, 'seekFrame' | 'isPlaying'> &
-  Pick<ViewSlice, 'oarSide' | 'graphMode' | 'initialOarSide' | 'initialGraphMode' | 'playOnSwitch'>;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createDatasetSlice: StateCreator<any, [], [], DatasetSlice> = (set, get) => ({
+export const createDatasetSlice: StateCreator<PlaybackState, [], [], DatasetSlice> = (set, get) => ({
   datasets: [],
   selectedDatasetId: '',
   customDatasets: {},
@@ -53,7 +31,7 @@ export const createDatasetSlice: StateCreator<any, [], [], DatasetSlice> = (set,
   setDatasets: (datasets) => {
     const sorted = sortDatasets(datasets);
     const { selectedDatasetId, initialOarSide, initialGraphMode, playOnSwitch } =
-      get() as DatasetSlice & CrossSliceState;
+      get();
     const nextSelected = selectedDatasetId || sorted[0]?.id || '';
     const hasNext = sorted.some((d) => d.id === nextSelected);
     const changed = selectedDatasetId !== nextSelected;
@@ -69,7 +47,7 @@ export const createDatasetSlice: StateCreator<any, [], [], DatasetSlice> = (set,
   },
 
   setSelectedDatasetId: (selectedDatasetId) => {
-    const { initialOarSide, initialGraphMode, playOnSwitch } = get() as CrossSliceState;
+    const { initialOarSide, initialGraphMode, playOnSwitch } = get();
     set({
       selectedDatasetId,
       seekFrame: 0,
@@ -81,7 +59,7 @@ export const createDatasetSlice: StateCreator<any, [], [], DatasetSlice> = (set,
 
   addCustomDataset: (id, label, data) => {
     const { datasets, customDatasets, initialOarSide, initialGraphMode, playOnSwitch } =
-      get() as DatasetSlice & CrossSliceState;
+      get();
     const newItem: DatasetManifestItem = { id, label, path: `custom://${id}` };
     const nextDatasets = datasets.some((item) => item.id === id)
       ? datasets
@@ -99,7 +77,7 @@ export const createDatasetSlice: StateCreator<any, [], [], DatasetSlice> = (set,
 
   setCustomDatasets: (items) => {
     const { selectedDatasetId, seekFrame, isPlaying, initialOarSide, initialGraphMode, playOnSwitch } =
-      get() as DatasetSlice & CrossSliceState;
+      get();
     const sorted = sortDatasets(
       items.map((item) => ({ id: item.id, label: item.label, path: `custom://${item.id}` })),
     );
