@@ -146,7 +146,7 @@ export function detectStrokesInternal(frames: NormalizedFrame[], trajectory?: Tr
   const mergedSessions: WaterSession[] = [];
 
   for (let i = 0; i < rawSessions.length; i++) {
-    let merged = { ...rawSessions[i] };
+    const merged = { ...rawSessions[i] };
 
     // 後続セッションとのギャップが短く、かつ片方が短ければマージ
     while (i + 1 < rawSessions.length) {
@@ -209,7 +209,7 @@ export function detectStrokesInternal(frames: NormalizedFrame[], trajectory?: Tr
     // finishStart: catchEnd 以降で、最後に isBothIn だった区間の後、
     // いずれかが水から出始めるフレームを探す。
     // マージされたセッション内のギャップをまたいで走査する。
-    let finishStart = catchEnd + 1;
+    let finishStart: number;
     if (foundBoth) {
       // catchEnd 以降で最後に isBothIn だったフレームを探す
       let lastBothIn = catchEnd;

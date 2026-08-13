@@ -3,6 +3,18 @@ import { detectStrokesInternal } from '../utils/strokeDetect';
 import type { TrajectoryPoint } from '../utils/trajectory';
 import type { NormalizedFrame } from '../domain/schema';
 
+const EMPTY_METRICS: NormalizedFrame['metrics'] = {
+  speed: null,
+  accx: null,
+  accy: null,
+  accz: null,
+  gyrox: null,
+  gyroy: null,
+  gyroz: null,
+  SPM: null,
+  SPLIT: null,
+};
+
 /**
  * ヘルパー: 合成 NormalizedFrame を生成する。
  * 最低限のフィールドのみを埋め、FPS は timeSec から推定させる。
@@ -27,7 +39,7 @@ function makeFrames(count: number, fps: number): NormalizedFrame[] {
     errDegBoatZ: null,
     gpsLat: null,
     gpsLon: null,
-    metrics: {} as any,
+    metrics: { ...EMPTY_METRICS },
   })) as NormalizedFrame[];
 }
 
