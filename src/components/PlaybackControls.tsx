@@ -1,7 +1,7 @@
-import { useRef, useState, useEffect } from 'react';
-import type { DatasetCsv, DatasetManifestItem, RowingFrame } from '../types/rowing';
+import { useState, useEffect, type InputHTMLAttributes } from 'react';
+import type { DatasetManifestItem, LocalDatasetItem, RowingFrame } from '../types/rowing';
 import type { GraphMode, SpeedSource } from '../types/view';
-import { parseRowingCsv } from '../data/csvParser';
+import { useLocalDatasets } from '../hooks/useLocalDatasets';
 
 const toNumber = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -40,7 +40,7 @@ type PlaybackControlsProps = {
   onSeekChange: (frame: number) => void;
   onFpsChange: (fps: number) => void;
   onGraphModeChange?: (graphMode: GraphMode) => void;
-  onCustomDatasetsLoaded?: (items: Array<{ id: string; label: string; data: DatasetCsv }>) => void;
+  onCustomDatasetsLoaded?: (items: LocalDatasetItem[]) => void;
   onDirectoryHandleChange?: (handle: FileSystemDirectoryHandle | null) => void;
   onAutoReloadEnabledChange?: (enabled: boolean) => void;
   onAutoReloadIntervalChange?: (interval: number) => void;
@@ -107,8 +107,6 @@ export default function PlaybackControls({
   speedIntegrationUsable = true,
   onReload,
 }: PlaybackControlsProps) {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
   const spm = currentFrame ? toNumber(currentFrame.SPM) : null;
   const split = currentFrame ? toNumber(currentFrame.SPLIT) : null;
   const leftAngle = currentFrame ? toNumber(currentFrame.angle_left) : null;
@@ -120,184 +118,31 @@ export default function PlaybackControls({
     }
   };
 
-  const loadFromDirectoryHandle = async (handle: FileSystemDirectoryHandle) => {
-    try {
-      const loadedDatasets: Array<{ id: string; label: string; data: DatasetCsv }> = [];
-
-      for await (const entry of (handle as any).values()) {
-        if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.csv')) {
-          try {
-            const file = await entry.getFile();
-            const text = await file.text();
-            const parsed = parseRowingCsv(text);
-            const customId = `local-${file.name}`;
-            const label = `📂 ${file.name}`;
-            loadedDatasets.push({ id: customId, label, data: parsed });
-          } catch (fileErr) {
-            console.warn(`Failed to read file "${entry.name}", skipping:`, fileErr);
-          }
-        }
-      }
-
-      if (loadedDatasets.length === 0) {
-        alert('選択されたフォルダにCSVファイルが見つかりませんでした。');
-        if (onCustomDatasetsLoaded) {
-          onCustomDatasetsLoaded([]);
-        }
-        return;
-      }
-
-      const hasSampleCsv = loadedDatasets.some(
-        (item) => item.label.toLowerCase().includes('sample_')
-      );
-      if (!hasSampleCsv) {
-        alert('【注意】選択されたフォルダ内に "sample_*.csv" のパターンに合致するファイルが見つかりませんでした。');
-      }
-
-      if (onCustomDatasetsLoaded) {
-        onCustomDatasetsLoaded(loadedDatasets);
-      }
-    } catch (err) {
-      console.error('Failed to load from directory handle:', err);
-      alert(`フォルダの読み込みに失敗しました:\n${err instanceof Error ? err.message : String(err)}`);
-    }
-  };
-
-  const handleSelectFolderClick = async () => {
-    if ('showDirectoryPicker' in window) {
-      try {
-        const handle = await (window as any).showDirectoryPicker();
-        if (onDirectoryHandleChange) {
-          onDirectoryHandleChange(handle);
-        }
-        await loadFromDirectoryHandle(handle);
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
-          return;
-        }
-        console.error('Directory picker failed, falling back to input:', err);
-        fileInputRef.current?.click();
-      }
-    } else {
-      fileInputRef.current?.click();
-    }
-  };
-
-  const handleReloadClick = async () => {
-    if (directoryHandle) {
-      try {
-        const options = { mode: 'read' as const };
-        if (await (directoryHandle as any).queryPermission(options) !== 'granted') {
-          if (await (directoryHandle as any).requestPermission(options) !== 'granted') {
-            alert('フォルダの読み取り権限が拒否されたため、再読み込みできませんでした。');
-            return;
-          }
-        }
-        await loadFromDirectoryHandle(directoryHandle);
-        triggerSpin();
-        onReload?.();
-      } catch (err) {
-        console.error('Reload directory failed:', err);
-        alert(`再読み込みに失敗しました:\n${err instanceof Error ? err.message : String(err)}`);
-      }
-    } else {
-      alert('自動再読み込みがサポートされていないか、フォルダがまだ選択されていません。再度フォルダを選択してください。');
-      fileInputRef.current?.click();
-    }
-  };
-
-  const handleFolderChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) {
-      return;
-    }
-
-    const csvFiles = Array.from(files).filter(
-      (file) => file.name.toLowerCase().endsWith('.csv')
-    );
-
-    if (csvFiles.length === 0) {
-      alert('選択されたフォルダにCSVファイルが見つかりませんでした。');
-      if (onCustomDatasetsLoaded) {
-        onCustomDatasetsLoaded([]);
-      }
-      return;
-    }
-
-    const hasSampleCsv = csvFiles.some(
-      (file) => file.name.toLowerCase().startsWith('sample_')
-    );
-    if (!hasSampleCsv) {
-      alert('【注意】選択されたフォルダ内に "sample_*.csv" のパターンに合致するファイルが見つかりませんでした。');
-    }
-
-    const loadedDatasets: Array<{ id: string; label: string; data: DatasetCsv }> = [];
-
-    for (const file of csvFiles) {
-      try {
-        const text = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(reader.error);
-          reader.readAsText(file);
-        });
-
-        const parsed = parseRowingCsv(text);
-        const customId = `local-${file.name}`;
-        const label = `📂 ${file.name}`;
-
-        loadedDatasets.push({ id: customId, label, data: parsed });
-      } catch (err) {
-        console.error(`File load failed: ${file.name}`, err);
-        alert(`ファイル "${file.name}" の読み込みに失敗しました:\n${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
-
-    if (loadedDatasets.length > 0 && onCustomDatasetsLoaded) {
-      onCustomDatasetsLoaded(loadedDatasets);
-    }
-
-    event.target.value = '';
-  };
-
   const [showOptions, setShowOptions] = useState(false);
   const [showAnalysisDetails, setShowAnalysisDetails] = useState(false);
-  const [isSpinning, setIsSpinning] = useState(false);
+  const {
+    fileInputRef,
+    isReloading,
+    loadFileInput,
+    reloadDirectory,
+    selectDirectory,
+  } = useLocalDatasets({
+    directoryHandle,
+    autoReloadEnabled,
+    autoReloadIntervalSeconds: autoReloadInterval,
+    onDatasetsLoaded: onCustomDatasetsLoaded,
+    onDirectoryHandleChange,
+    onReload,
+  });
 
-  const triggerSpin = () => {
-    setIsSpinning(true);
-    setTimeout(() => {
-      setIsSpinning(false);
-    }, 600);
+  const directoryInputProps: InputHTMLAttributes<HTMLInputElement> & {
+    webkitdirectory: string;
+    directory: string;
+  } = {
+    webkitdirectory: '',
+    directory: '',
+    multiple: true,
   };
-
-  // Background Auto-Reload Effect
-  useEffect(() => {
-    if (!autoReloadEnabled || !directoryHandle) {
-      return;
-    }
-
-    const runAutoReload = async () => {
-      try {
-        const options = { mode: 'read' as const };
-        if (await (directoryHandle as any).queryPermission(options) === 'granted') {
-          await loadFromDirectoryHandle(directoryHandle);
-          triggerSpin();
-          onReload?.();
-        }
-      } catch (err) {
-        console.warn('Background auto reload failed:', err);
-      }
-    };
-
-    const timerId = setInterval(() => {
-      void runAutoReload();
-    }, autoReloadInterval * 1000);
-
-    return () => {
-      clearInterval(timerId);
-    };
-  }, [autoReloadEnabled, autoReloadInterval, directoryHandle]);
 
   // Click outside listener for options popover
   useEffect(() => {
@@ -580,15 +425,11 @@ export default function PlaybackControls({
       <input
         type="file"
         ref={fileInputRef}
-        onChange={handleFolderChange}
+        onChange={(event) => void loadFileInput(event)}
         style={{ display: 'none' }}
-        {...({
-          webkitdirectory: '',
-          directory: '',
-          multiple: true,
-        } as any)}
+        {...directoryInputProps}
       />
-      <button type="button" onClick={handleSelectFolderClick} title="CSVファイルの入ったフォルダを選択">
+      <button type="button" onClick={() => void selectDirectory()} title="CSVファイルの入ったフォルダを選択">
         フォルダ選択
       </button>
 
@@ -673,11 +514,11 @@ export default function PlaybackControls({
 
       <button
         type="button"
-        onClick={handleReloadClick}
+        onClick={() => void reloadDirectory()}
         className="reload-btn"
         title="フォルダ内を再読み込み"
       >
-        <img src={`${import.meta.env.BASE_URL}RELOAD.png`} alt="再読み込み" className={isSpinning ? 'spinning' : ''} />
+        <img src={`${import.meta.env.BASE_URL}RELOAD.png`} alt="再読み込み" className={isReloading ? 'spinning' : ''} />
       </button>
     </section>
   );
