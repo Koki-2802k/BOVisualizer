@@ -4,6 +4,14 @@
 
 本ファイルはBOVisualizerのAIエージェント向け機能仕様の要約である．詳細設計は `doc/DETAIL.md`，ユーザー向け説明は `README.md` を参照する．仕様変更時は実装だけでなく必要な文書も更新する．
 
+## Delivery model
+
+1. BOVisualizerはGitHub Pagesへ配置するclient-side onlyの静的SPAである．
+2. production buildは `dist/` の静的fileだけで動作し，application serverやcloud runtimeを要求しない．
+3. GCP，Cloud Run，Firebase，serverless function，専用API/backend，database等を導入する変更は，ユーザーの明示的な仕様変更なしに行わない．
+4. Dockerはローカル検証を再現するための任意手段としてのみ扱い，production architectureへ含めない．
+5. asset URLはGitHub Pagesのbase pathを考慮し，既存の `import.meta.env.BASE_URL` 方針を維持する．
+
 ## Functional invariants
 
 1. センサーデータとGPSデータを同一タイムライン上で再生し，3D表示・地図・グラフ・解析表示を同期させる．
@@ -22,6 +30,8 @@
 - View layer: `src/components/*`
 
 上位層の都合を下位層へ持ち込まない．特にDOM/React依存をdomain/utilへ追加しない．
+
+server layerやcloud adapterをこの依存関係へ追加せず，外部データはbrowserのfile APIまたは静的resourceへのfetchを通じてdata layerへ入力する．
 
 ## Data compatibility
 

@@ -18,7 +18,7 @@
 | commit / push / branch操作 | `agent/GIT_WORKFLOW.md` |
 | PR作成・review | `agent/REVIEW_RULES.md` |
 | package / library / external asset等の追加 | `agent/DEPENDENCY_RULES.md` |
-| 外部入力，fetch，filesystem，secret，GitHub Actions等 | `agent/SECURITY_RULES.md` |
+| 外部入力，fetch，filesystem，secret等 | `agent/SECURITY_RULES.md` |
 | Markdownや設計文書の更新 | `agent/DOCUMENTATION_RULES.md` |
 | README変更 | `agent/README_GUIDE.md` |
 | 完了報告の直前 | `agent/DEFINITION_OF_DONE.md` |
@@ -36,6 +36,8 @@
 ## 基本原則
 
 - 現在のタスクに関係しない「ついでの改善」を行わない．
+- 本番環境はGitHub Pages上の静的SPAとし，GCP等のcloud platform，backend，serverless functionを追加しない．
+- Dockerを利用する場合は任意のローカル検証に限定し，本番実行やdeployの前提にしない．
 - `src/data` → `src/domain` → `src/store` → `src/components` の依存方向を崩さない．
 - 既存の可視化挙動，CSV互換性，3D/GPS/グラフ同期を壊さない．
 - Git履歴をbackupとして利用し，`.bak`や`old_`等のbackup copyを作らない．

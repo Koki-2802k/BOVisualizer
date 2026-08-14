@@ -10,11 +10,15 @@ npm run build
 npm run test -- --run
 ```
 
+`npm run build` ではGitHub Pagesへ配置する静的成果物が生成されることを確認する．cloud環境へのdeployや接続確認は通常の完了条件に含めない．
+
 UI・3D・データ読込・再生挙動に影響する変更では，環境が利用可能なら次も実行する．
 
 ```bash
 npm run e2e:cdp
 ```
+
+これらはhost上または任意のDocker環境で実行できる．Docker固有の結果だけでbrowser上の確認を代替しない．
 
 ## TypeScript
 

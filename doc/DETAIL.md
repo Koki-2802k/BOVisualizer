@@ -815,6 +815,8 @@ npm run lint
 
 ## 15. ビルド・デプロイ
 
+BOVisualizerのproduction architectureはGitHub Pagesから配信する静的SPAです。CSVのparseと解析はbrowser内で行い、GCP等のcloud runtime、backend、database、serverless functionは使用しません。Dockerを利用する場合もローカル検証に限定します。
+
 ### 15.1 開発サーバーの起動
 
 ```bash
@@ -828,7 +830,7 @@ Viteの `base` パスが `/BOVisualizer/` に設定されており（`vite.confi
 
 ```bash
 npm run build    # dist/ にビルドされる
-# dist/ を GitHub Pages の gh-pages ブランチにプッシュ
+npm run deploy   # dist/ を GitHub Pages の gh-pages ブランチへ公開
 ```
 
 ### 15.3 コードスプリッティング

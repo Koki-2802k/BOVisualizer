@@ -10,10 +10,18 @@ BOVisualizerは，Xsens DOT等のIMUセンサーとGPSから得たローイン�
 - Zustandによる状態管理
 - Three.js / React Three Fiber / Dreiによる3D可視化
 - Leaflet / react-leafletによるGPS表示
-- Rechartsによるチャート
-- PapaParseによるCSV読込
+- Canvas 2D APIによる時系列・オール軌跡チャート
+- Web標準APIと型付きparserによるブラウザ内CSV読込
 - Vitestによるunit test
 - CDPベースのE2E検証
+
+## Runtime and deployment
+
+- 本番成果物はViteが生成する静的SPAであり，GitHub Pagesから配信する．
+- CSVのparse，ローイング解析，状態管理，描画はブラウザ内で完結する．
+- 本番用backend，database，server-side rendering，serverless function，GCP等のcloud platformを前提としない．
+- Dockerは必要に応じたローカル動作確認の手段に限り，利用者の実行環境やGitHub Pagesへのdeploy要件にしない．
+- 実行時の外部通信は，静的asset/manifest/CSVの取得と地図tile等、ブラウザ表示に必要なものへ限定する．
 
 ## Architecture
 
@@ -34,6 +42,7 @@ BOVisualizerは，Xsens DOT等のIMUセンサーとGPSから得たローイン�
 - 3D表示ではボート・左右オールの姿勢計算と補正角の意味を変更しないこと．
 - 計算量の大きい解析は `analysisRepository` 等の既存キャッシュ設計を尊重すること．
 - UI変更でデータ処理ロジックをReact componentへ移さないこと．
+- GitHub Pagesのproject site用base path `/BOVisualizer/` で静的assetを解決できること．
 
 ## Source documents
 

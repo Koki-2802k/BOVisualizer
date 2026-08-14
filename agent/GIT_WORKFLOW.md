@@ -6,4 +6,4 @@
 - commit messageは変更目的を簡潔に表す．
 - force pushやhistory rewriteはユーザーの明示指示なしに行わない．
 - PRには変更内容，理由，影響，実行した検証を記載する．
-- GitHub ActionsやClaude review設定の変更では，必要なRepository Secretをコードへ書かない．
+- deploy対象はGitHub Pagesの静的成果物とし，cloud provider用branchや環境設定を追加しない．

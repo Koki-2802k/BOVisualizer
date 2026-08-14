@@ -4,6 +4,7 @@
 
 - ユーザー要求を満たしている．
 - `PROJECT_CONTEXT.md` / `SYSTEM_SPEC.md` と矛盾していない．
+- GitHub Pagesで動作する静的SPAの境界を維持し，不要なcloud/backend依存を追加していない．
 - unrelated changeを含めていない．
 - 型エラー・lint errorを残していない．
 - 対象に応じたtestを追加または更新した．

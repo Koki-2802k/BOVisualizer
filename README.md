@@ -124,6 +124,18 @@ npm run dev
 npm run build
 ```
 
+## 🌐 実行・デプロイ構成
+
+BOVisualizerは、ブラウザ内でCSVの読み込み・解析・可視化を完結する静的SPAです。GCP等のcloud runtime、application server、databaseは使用しません。
+
+本番成果物は `npm run build` で生成される `dist/` で、Viteのbase path `/BOVisualizer/` を使用してGitHub Pagesへ配信します。
+
+```bash
+npm run deploy
+```
+
+Dockerは必須ではありません。利用する場合も、上記の開発サーバー・build・testを再現するローカル確認用途に限ります。
+
 ---
 
 ## 🧪 テスト・検証
